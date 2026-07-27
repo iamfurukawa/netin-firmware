@@ -1,9 +1,9 @@
 #pragma once
 
-#include "app_types.h"
-#include "netin_display.h"
-#include "settings_store.h"
-#include "touch_input.h"
+#include "app/app_types.h"
+#include "display/netin_display.h"
+#include "input/touch_input.h"
+#include "storage/settings_store.h"
 
 class Ui {
   public:

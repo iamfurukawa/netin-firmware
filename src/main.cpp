@@ -1,10 +1,10 @@
 #include <Arduino.h>
 #include <TFT_eSPI.h>
 
-#include "netin_display.h"
-#include "settings_store.h"
-#include "touch_input.h"
-#include "ui.h"
+#include "display/netin_display.h"
+#include "input/touch_input.h"
+#include "storage/settings_store.h"
+#include "ui/ui.h"
 
 namespace {
 TFT_eSPI tft;

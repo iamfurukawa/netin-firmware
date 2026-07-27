@@ -2,7 +2,7 @@
 
 #include <TFT_eSPI.h>
 
-#include "app_types.h"
+#include "app/app_types.h"
 
 class NetinDisplay {
   public:

@@ -22,7 +22,8 @@ pio device monitor
 
 ## Estrutura
 
-- `src/main.cpp`: tela inicial, touch e LED.
+- `src/main.cpp`: inicialização e ciclo principal.
+- `src/app`, `src/display`, `src/input`, `src/storage` e `src/ui`: tipos de domínio, display, touch, persistência e telas.
 - `lib/`: cópia local do TFT_eSPI com a configuração da placa.
 - `components/TFT_eSPI`: atalho para a biblioteca local, usado pelo PlatformIO.
 

@@ -22,7 +22,7 @@ O dispositivo deve restaurar status e tema após reiniciar, responder de forma p
 | Dormindo | verde-escuro | letras Z |
 | Não perturbe | cinza-escuro | sinal de menos |
 
-Os estados, rótulos, cores e ícones estão definidos em `app_types.*` e `netin_display.cpp`. Não há assets externos, GIFs ou fontes customizadas.
+Os estados, rótulos, cores e ícones estão definidos em `src/app/app_types.*` e `src/display/netin_display.cpp`. Não há assets externos, GIFs ou fontes customizadas.
 
 ### Tela principal
 
@@ -93,11 +93,11 @@ constexpr uint8_t kRgbLedPins[] = {4, 16, 17};
 | Módulo | Responsabilidade |
 | --- | --- |
 | `main.cpp` | Inicialização de LED, display, touch, NVS e ciclo principal. |
-| `app_types.*` | Estados, temas, validação e rótulos. |
-| `netin_display.*` | Inicialização do TFT, compensação de cor e desenho de ícones/controles. |
-| `touch_input.*` | Leitura calibrada, debounce e emissão de eventos. |
-| `settings_store.*` | Carregamento e gravação de `Preferences`. |
-| `ui.*` | Máquina de estados das telas, paginação e roteamento de toques. |
+| `src/app/app_types.*` | Estados, temas, validação e rótulos. |
+| `src/display/netin_display.*` | Inicialização do TFT, compensação de cor e desenho de ícones/controles. |
+| `src/input/touch_input.*` | Leitura calibrada, debounce e emissão de eventos. |
+| `src/storage/settings_store.*` | Carregamento e gravação de `Preferences`. |
+| `src/ui/ui.*` | Máquina de estados das telas, paginação e roteamento de toques. |
 
 ### Máquina de estados
 

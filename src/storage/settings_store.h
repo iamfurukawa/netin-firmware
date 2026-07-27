@@ -1,6 +1,6 @@
 #pragma once
 
-#include "app_types.h"
+#include "app/app_types.h"
 
 class SettingsStore {
   public:
