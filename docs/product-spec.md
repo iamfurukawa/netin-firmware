@@ -41,7 +41,7 @@ Foco em tarefas mais ricas. Uma PWA permite começar sem desenvolver e manter ap
 Fonte de verdade para identidade, relacionamentos e eventos.
 
 - API autenticada para a PWA.
-- Canal persistente para os dispositivos, inicialmente WebSocket ou MQTT.
+- Canal persistente MQTT sobre WebSocket seguro para os dispositivos.
 - Fila de eventos, confirmação de entrega e sincronização após períodos offline.
 - Processamento de mídia: validação, transcodificação, limite de tamanho e cache.
 
@@ -148,7 +148,8 @@ Para a primeira versão, o melhor recorte é **foto e GIF pequeno**. Vídeo deve
 
 ## Roadmap sugerido
 
-Detalhamento da primeira entrega: [Fase 1](phase-1-spec.md).
+Detalhamento das entregas: [Fase 1](phase-1-spec.md), [Fase 2](phase-2-spec.md)
+e [Fase 4 — OTA](phase-4-spec.md).
 
 ### Fase 1 — fundação local
 
@@ -162,7 +163,7 @@ Detalhamento da primeira entrega: [Fase 1](phase-1-spec.md).
 - Configuração de Wi‑Fi.
 - Registro do dispositivo e perfil.
 - PWA de configuração, perfil e pareamento.
-- Backend com autenticação simples e WebSocket/MQTT para eventos.
+- Backend com autenticação simples e MQTT sobre WebSocket para eventos.
 - Sincronização de status e entrega de mensagens curtas.
 
 ### Fase 3 — social
@@ -170,21 +171,27 @@ Detalhamento da primeira entrega: [Fase 1](phase-1-spec.md).
 - Contatos, convites e grupos.
 - Reações, broadcast, histórico e cutucar com limites anti-spam.
 - Envio de foto/GIF pela PWA, processamento no backend e cache local.
+- Renovação deslizante de sessão: ao usar a PWA perto do vencimento, a API emite
+  um novo cookie/sessão e revoga o anterior. Incluir limpeza periódica de sessões
+  vencidas no PostgreSQL, limite de sessões ativas por conta e opção de encerrar
+  sessões em outros dispositivos.
 
 ### Fase 4 — distribuição
 
 - OTA, diagnósticos e recuperação de rede.
 - Privacidade, bloqueios e observabilidade do backend.
+- Atualização remota com assinatura, rollback e liberação progressiva; ver
+  [especificação de OTA](phase-4-spec.md).
 
 ### Fase 5 — mídia
 
 - Foto sob demanda.
 - Experimentos de streaming em hardware adequado.
 
-## Decisões a tomar antes da Fase 2
+## Decisões pendentes após o início da Fase 2
 
-- O backend será próprio, Firebase/Supabase ou outro serviço?
+- O backend é próprio: Node.js/TypeScript, Fastify, PostgreSQL e Mosquitto na Raspberry Pi.
 - As interações são privadas por padrão ou haverá descoberta pública?
 - Os grupos serão administrados por convite, código temporário ou ambos?
-- A configuração Wi‑Fi será feita por portal cativo, aplicativo ou serial?
+- A configuração Wi‑Fi será feita por portal local no dispositivo; Bluetooth e serial não entram no fluxo principal.
 - A placa atual terá bateria, buzzer ou outro mecanismo de alerta?
