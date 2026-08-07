@@ -117,9 +117,9 @@ Telas mínimas:
 
 ### Interface na placa
 
-A Home preserva o cartão de status como ação principal, sem cabeçalho, rodapé ou indicador de rede. O estado de rede é apresentado textualmente em Ajustes.
+A Home preserva o status abaixo do menu como ação principal, sem cabeçalho, rodapé ou indicador de rede. O estado de rede é apresentado textualmente em Ajustes.
 
-A engrenagem abre Ajustes com itens suficientes para a parte conectada:
+O menu abre Ajustes com itens suficientes para a parte conectada:
 
 - Tema claro/escuro (recurso existente).
 - Rede: mostra o estado textual da conectividade e oferece `Configurar Wi-Fi`, `Tentar novamente` quando aplicável e `Esquecer redes`.
