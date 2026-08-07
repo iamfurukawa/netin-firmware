@@ -33,7 +33,7 @@ Uma pessoa consegue:
 - Um dispositivo sem credenciais Wi-Fi inicia em **modo de configuração**.
 - O modo de configuração é iniciado também por uma ação explícita em Ajustes; deve haver confirmação para evitar apagar a conexão por toque acidental.
 - O provisionamento é feito exclusivamente por portal Wi-Fi local; BLE não entra nesta fase.
-- A placa expõe uma rede temporária protegida, por exemplo `Netin-7K3P`, e um portal em `http://192.168.4.1`. Um QR e um PIN de sessão são exibidos na tela para orientar e autorizar a configuração.
+- A placa expõe uma rede temporária protegida, por exemplo `Netin-7K3P`, e um portal em `http://192.168.4.1`. A senha temporária possui oito dígitos numéricos e é exibida na tela. QR fica como melhoria futura; a URL cativa/direta é suficiente nesta fase.
 - O portal lista redes visíveis, permite selecionar/informar SSID e senha e mostra o resultado da tentativa de conexão.
 - O usuário conecta o celular temporariamente à rede do Netin. A abertura automática do portal é desejável, mas a URL direta deve funcionar quando o sistema operacional não a oferecer.
 - As credenciais ficam somente na placa, em armazenamento não exposto pela PWA nem enviado ao backend.
@@ -46,7 +46,7 @@ Uma pessoa consegue:
 - Uma rede só é adicionada ou atualizada depois que a conexão for validada; inserir senha incorreta não altera os perfis já salvos.
 - No boot e após perder a rede, o firmware tenta primeiro o último perfil conectado com sucesso. Se ele não estiver visível ou falhar, faz uma varredura e tenta os demais perfis salvos visíveis, do mais recentemente bem-sucedido para o menos recente.
 - As tentativas ocorrem em segundo plano, com espera progressiva, sem bloquear touch ou renderização. O portal não abre automaticamente apenas porque uma rede está indisponível.
-- Ao adicionar uma sexta rede, o perfil com sucesso mais antigo é removido. A remoção é informada no portal antes da confirmação final.
+- Ao adicionar uma sexta rede, o perfil com sucesso mais antigo é removido. A interface do portal deve informar essa substituição antes da confirmação final.
 - Ajustes oferece as ações `Configurar Wi-Fi` e `Esquecer redes`; esta última exige confirmação e não remove o vínculo da conta.
 
 ### Pareamento dispositivo–conta
@@ -117,19 +117,13 @@ Telas mínimas:
 
 ### Interface na placa
 
-A Home preserva o cartão de status como ação principal. No canto superior direito, fora do cartão e sem criar cabeçalho, há um ícone de Wi-Fi semelhante ao indicador de um celular. Ele é apenas informativo; a engrenagem continua sendo a entrada para Ajustes.
-
-| Cor do ícone | Estado |
-| --- | --- |
-| verde | conectado à rede Wi-Fi e ao serviço de sincronização. |
-| vermelho | desconectado: não há conexão Wi-Fi utilizável. |
-| amarelo | qualquer estado intermediário: portal ativo, varredura, conectando, retentativa ou Wi-Fi conectado enquanto a sincronização ainda não está pronta. |
+A Home preserva o cartão de status como ação principal, sem cabeçalho, rodapé ou indicador de rede. O estado de rede é apresentado textualmente em Ajustes.
 
 A engrenagem abre Ajustes com itens suficientes para a parte conectada:
 
 - Tema claro/escuro (recurso existente).
-- Rede: mostra o estado textual correspondente ao ícone e oferece `Configurar Wi-Fi`, `Tentar novamente` quando aplicável e `Esquecer redes`.
-- Conta/dispositivo: estado `não pareado`, `aguardando pareamento` ou nome do perfil; abre a tela de código de pareamento quando aplicável.
+- Rede: mostra o estado textual da conectividade e oferece `Configurar Wi-Fi`, `Tentar novamente` quando aplicável e `Esquecer redes`.
+- Dispositivo: identificador curto e estado `não pareado`, `gerando código` ou `pareado`; abre a tela de código de pareamento quando aplicável.
 
 As mensagens devem ser curtas, legíveis em 240×320 e não esconder as ações de voltar. A configuração detalhada de Wi-Fi e a edição de perfil ocorrem no celular.
 
@@ -243,17 +237,17 @@ Os contratos HTTP e MQTT devem ser versionados e compartilhados entre os reposit
 ## Decisões necessárias antes de implementar
 
 - [x] Backend inicial: Node.js/TypeScript com Fastify, PostgreSQL e Mosquitto na Raspberry Pi.
-- [ ] Definir o formato do QR e o comportamento do DNS cativo; a URL direta `192.168.4.1` permanece obrigatória como fallback.
+- [x] Portal Wi-Fi cativo com fallback em `192.168.4.1`; QR foi adiado.
 - [x] Endpoints públicos: `netin.13997906387.xyz` (PWA), `netin-server.13997906387.xyz` (API) e `netin-mqtt.13997906387.xyz` (MQTT/WSS). Cloudflare Tunnel termina TLS; o firmware valida a CA do certificado público.
 - [ ] Definir formato/tamanho da fila persistente e política de recuperação quando estiver cheia.
-- [ ] Validar capacidade de flash/RAM com Wi-Fi, TLS, portal e canal persistente; avaliar necessidade de partição customizada ou PSRAM.
+- [x] Validado Wi-Fi, portal, NTP e HTTPS de pareamento: firmware ocupa aproximadamente 78% da partição padrão de aplicação. MQTT/TLS e a tabela OTA continuam pendentes de validação.
 
 ### Infraestrutura já validada
 
 - Raspberry Pi atrás de CGNAT com Cloudflare Tunnel apontando o curinga de domínio ao Nginx na rede Docker `nginxnet`.
 - Nginx roteia `netin-server.13997906387.xyz` para `netin-server:3000`, `netin.13997906387.xyz` para `netin-web:80` e `netin-mqtt.13997906387.xyz` para `mosquitto:9001` com upgrade WebSocket e HTTP/1.1. O nome Docker do container do broker é `netin-mosquitto`, mas o nome de serviço resolvido na rede é `mosquitto`.
 - API e PWA possuem runners GitHub Actions ARM64 próprios na Raspberry; somente pushes na `main` executam deploy. O upload físico do firmware permanece manual.
-- A API inicial expõe `GET /health`; a PWA inicial está publicada e valida essa conexão. Autenticação, pareamento e sincronização ainda não foram implementados.
+- API e PWA publicadas com autenticação por e-mail/senha, sessão por cookie, listagem/remoção de dispositivos e pareamento por código. Sincronização de status permanece pendente.
 
 > Os nomes públicos são planos de propósito. O certificado Universal SSL e o curinga `*.13997906387.xyz` não cobrem subdomínios com dois níveis, como `netin.server.13997906387.xyz`.
 
@@ -272,34 +266,29 @@ os testes de aceite finais.
   GitHub Actions ARM64; firmware permanece com upload físico manual.
 - [x] API inicial publicada com `GET /health` e PWA inicial publicada, que
   verifica a conexão com a API.
+- [x] Autenticação de e-mail/senha, perfil de sessão, dispositivos e pareamento por código na API/PWA.
+- [x] Portal Wi-Fi protegido, expiração do portal, confirmação para esquecer redes e até cinco perfis priorizados pelo último sucesso, com retentativa progressiva.
+- [x] Identidade persistente, registro HTTPS validado por CA, NTP, código temporário de pareamento e credencial revogável persistida no firmware.
 
-### Em execução — fundação do backend
+### Pendente — sincronização do backend
 
 - [ ] **P0 — corrigir validação de deploy:** o health check deve executar dentro
   do container `netin-server` ou pela rede Docker, nunca em `localhost:3000` no
   host. Isso evita aprovar o deploy ao consultar outro processo.
-- [ ] Criar migrações PostgreSQL e camada de acesso a dados para usuários,
-  sessões, dispositivos, pareamentos, status e deduplicação de eventos.
-- [ ] Implementar autenticação de e-mail/senha: cadastro, login, logout, sessão
-  segura por cookie e rota de identidade atual.
-- [ ] Registrar contrato HTTP versionado para PWA e contrato MQTT para a placa.
+- [ ] Modelar status atual, eventos, deduplicação e contratos HTTP/MQTT versionados.
+- [ ] Configurar autenticação dinâmica/ACL do Mosquitto com credenciais revogáveis por dispositivo.
+- [ ] Conectar o servidor ao broker e aplicar eventos MQTT de modo idempotente.
 
-### Pendente — PWA funcional
+### Pendente — PWA
 
-- [ ] Substituir a tela inicial temporária por cadastro, login, logout e sessão
-  persistente.
-- [ ] Implementar perfil sem avatar, lista/remoção de dispositivos, pareamento
-  por código e alteração de status.
+- [ ] Implementar perfil sem avatar: nome de exibição e cor opcional.
+- [ ] Implementar consulta e alteração de status sincronizado.
 - [ ] Adicionar service worker real e política de cache; o manifest atual, por
   si só, não torna a aplicação disponível offline.
 
 ### Pendente — firmware conectado
 
-- [ ] Implementar armazenamento de até cinco redes Wi-Fi, reconexão não
-  bloqueante, ícone de conectividade e tela de Rede/Ajustes.
-- [ ] Implementar access point e portal local em `192.168.4.1`, incluindo
-  expiração de sessão e tratamento de falhas.
-- [ ] Implementar identidade da placa, código temporário e pareamento com conta.
+- [ ] Informar no portal, antes da confirmação, quando uma sexta rede substituir a mais antiga.
 - [ ] Implementar MQTT/WSS com TLS, credencial revogável por dispositivo e
   tópicos versionados.
 - [ ] Implementar fila persistente, `eventId`, confirmação do backend e

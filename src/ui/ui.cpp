@@ -29,6 +29,32 @@ constexpr int16_t kConfirmX = 128;
 constexpr int16_t kConfirmY = 264;
 constexpr int16_t kConfirmW = 100;
 constexpr int16_t kConfirmH = 44;
+constexpr int16_t kThemeY = 72;
+constexpr int16_t kNetworkY = 128;
+constexpr int16_t kDeviceY = 184;
+constexpr int16_t kSettingsRowH = 48;
+
+const char *networkLabel(NetworkState state) {
+    switch (state) {
+        case NetworkState::Unconfigured: return "Nao configurada";
+        case NetworkState::Connecting: return "Conectando";
+        case NetworkState::Connected: return "Conectada";
+        case NetworkState::Portal: return "Portal ativo";
+    }
+    return "Desconhecida";
+}
+
+const char *pairingLabel(PairingState state) {
+    switch (state) {
+        case PairingState::Unpaired: return "Nao pareado";
+        case PairingState::Preparing: return "Preparando...";
+        case PairingState::CodeReady: return "Codigo de pareamento";
+        case PairingState::Paired: return "Pareado";
+        case PairingState::Offline: return "Conecte ao WiFi";
+        case PairingState::Error: return "Falha ao conectar";
+    }
+    return "Desconhecido";
+}
 }
 
 bool Ui::hit(uint16_t x, uint16_t y, int16_t rx, int16_t ry, int16_t rw, int16_t rh) const {
@@ -41,6 +67,21 @@ void Ui::draw() {
         case Screen::StatusPicker: drawStatusPicker(); break;
         case Screen::StatusConfirm: drawStatusConfirm(); break;
         case Screen::Settings: drawSettings(); break;
+        case Screen::Network: drawNetwork(); break;
+        case Screen::Device: drawDevice(); break;
+    }
+}
+
+void Ui::tick() {
+    const NetworkState current = network_.state();
+    if (current != lastNetworkState_) {
+        lastNetworkState_ = current;
+        if (screen_ == Screen::Network) draw();
+    }
+    const PairingState pairingState = pairing_.state();
+    if (pairingState != lastPairingState_) {
+        lastPairingState_ = pairingState;
+        if (screen_ == Screen::Device) draw();
     }
 }
 
@@ -106,7 +147,57 @@ void Ui::drawSettings() {
     const uint16_t foreground = display_.foreground(theme);
     display_.clear(theme);
     display_.text(22, 30, "Ajustes", foreground, background, 3);
-    display_.button(20, 96, 200, 56, theme == Theme::Dark ? "Tema claro" : "Tema escuro", display_.muted(theme), foreground);
+    display_.button(20, kThemeY, 200, kSettingsRowH, theme == Theme::Dark ? "Tema claro" : "Tema escuro", display_.muted(theme), foreground);
+    display_.button(20, kNetworkY, 200, kSettingsRowH, "Rede", display_.muted(theme), foreground);
+    display_.button(20, kDeviceY, 200, kSettingsRowH, "Dispositivo", display_.muted(theme), foreground);
+    display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(theme), foreground);
+}
+
+void Ui::drawNetwork() {
+    const Theme theme = settings_.theme;
+    const uint16_t background = display_.background(theme);
+    const uint16_t foreground = display_.foreground(theme);
+    display_.clear(theme);
+    display_.text(20, 24, "Rede", foreground, background, 3);
+    if (network_.state() == NetworkState::Portal) {
+        display_.text(20, 62, "Conecte em", foreground, background, 1);
+        display_.text(20, 80, network_.portalSsid().c_str(), foreground, background, 2);
+        display_.text(20, 104, "Senha", foreground, background, 1);
+        display_.text(20, 120, network_.portalPassword().c_str(), foreground, background, 2);
+        if (network_.portalConnectionFailed()) {
+            display_.text(20, 140, "Nao conectou. Tente de novo.", display_.statusColor(PresenceStatus::Busy), background, 1);
+        }
+    } else if (network_.state() == NetworkState::Connected) {
+        display_.text(20, 62, "Conectada em", foreground, background, 1);
+        display_.text(20, 82, network_.connectedSsid().c_str(), foreground, background, 2);
+    } else {
+        display_.text(20, 66, networkLabel(network_.state()), foreground, background, 2);
+    }
+    display_.button(20, 150, 200, 48, "Configurar WiFi", display_.muted(theme), foreground);
+    display_.button(20, 208, 200, 40, confirmForgetNetworks_ ? "Confirmar apagar" : "Esquecer redes", confirmForgetNetworks_ ? display_.statusColor(PresenceStatus::Busy) : display_.background(theme), foreground);
+    display_.button(kBackX, kBackY, kBackW, kBackH, confirmForgetNetworks_ ? "Cancelar" : "Voltar", display_.muted(theme), foreground);
+}
+
+void Ui::drawDevice() {
+    const Theme theme = settings_.theme;
+    const uint16_t background = display_.background(theme);
+    const uint16_t foreground = display_.foreground(theme);
+    display_.clear(theme);
+    display_.text(20, 24, "Dispositivo", foreground, background, 3);
+    display_.text(20, 64, "ID da placa", foreground, background, 1);
+    display_.text(20, 80, identity_.id.substring(0, 8).c_str(), foreground, background, 1);
+    const PairingState pairingState = pairing_.state();
+    if (pairingState != PairingState::Paired) {
+        display_.text(20, 108, pairingLabel(pairingState), foreground, background, 1);
+    }
+    if (pairingState == PairingState::CodeReady) {
+        display_.text(20, 126, pairing_.code().c_str(), foreground, background, 2);
+        display_.text(20, 158, "Adicione o codigo na PWA", foreground, background, 1);
+    } else if (pairingState == PairingState::Paired) {
+        display_.text(20, 118, "Pareado", display_.statusColor(PresenceStatus::Available), background, 2);
+    } else {
+        display_.button(20, 160, 200, 48, pairingState == PairingState::Preparing ? "Aguarde" : "Gerar codigo", display_.muted(theme), foreground);
+    }
     display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(theme), foreground);
 }
 
@@ -165,16 +256,51 @@ void Ui::handle(const TouchEvent &event) {
     }
 
     if (screen_ == Screen::Settings) {
-        if (hit(event.x, event.y, 20, 96, 200, 56)) {
+        if (hit(event.x, event.y, 20, kThemeY, 200, kSettingsRowH)) {
             settings_.theme = settings_.theme == Theme::Dark ? Theme::Light : Theme::Dark;
             store_.save(settings_);
+            draw();
+        } else if (hit(event.x, event.y, 20, kNetworkY, 200, kSettingsRowH)) {
+            screen_ = Screen::Network;
+            lastNetworkState_ = network_.state();
+            confirmForgetNetworks_ = false;
+            draw();
+        } else if (hit(event.x, event.y, 20, kDeviceY, 200, kSettingsRowH)) {
+            screen_ = Screen::Device;
+            lastPairingState_ = pairing_.state();
             draw();
         } else if (hit(event.x, event.y, kBackX, kBackY, kBackW, kBackH)) {
             screen_ = Screen::Home;
             draw();
         }
+    } else if (screen_ == Screen::Network && hit(event.x, event.y, 20, 150, 200, 48)) {
+        network_.startPortal();
+        lastNetworkState_ = network_.state();
+        draw();
+    } else if (screen_ == Screen::Device && hit(event.x, event.y, 20, 160, 200, 48)) {
+        pairing_.requestCode();
+        lastPairingState_ = pairing_.state();
+        draw();
+    } else if (screen_ == Screen::Network && hit(event.x, event.y, 20, 208, 200, 40)) {
+        if (confirmForgetNetworks_) {
+            network_.forgetNetworks();
+            lastNetworkState_ = network_.state();
+            confirmForgetNetworks_ = false;
+        } else {
+            confirmForgetNetworks_ = true;
+        }
+        draw();
     } else if (hit(event.x, event.y, kBackX, kBackY, kBackW, kBackH)) {
+        if (screen_ == Screen::Network && confirmForgetNetworks_) {
+            confirmForgetNetworks_ = false;
+            draw();
+            return;
+        }
+        if (screen_ == Screen::Network || screen_ == Screen::Device) {
+            screen_ = Screen::Settings;
+        } else {
         screen_ = Screen::StatusPicker;
+        }
         draw();
     } else if (hit(event.x, event.y, kConfirmX, kConfirmY, kConfirmW, kConfirmH)) {
         applyCandidate();
