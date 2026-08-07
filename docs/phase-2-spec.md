@@ -117,7 +117,7 @@ Telas mínimas:
 
 ### Interface na placa
 
-A Home preserva o status em tela cheia como ação principal, sem cabeçalho, rodapé ou indicador de rede. O estado de rede é apresentado textualmente em Ajustes.
+A Home preserva o status abaixo do menu como ação principal, sem cabeçalho, rodapé ou indicador de rede. O estado de rede é apresentado textualmente em Ajustes.
 
 O menu abre Ajustes com itens suficientes para a parte conectada:
 

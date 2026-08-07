@@ -3,13 +3,13 @@
 namespace {
 constexpr int16_t kScreenW = 240;
 constexpr int16_t kScreenH = 320;
-constexpr int16_t kStatusCardX = 0;
-constexpr int16_t kStatusCardY = 0;
-constexpr int16_t kStatusCardW = kScreenW;
-constexpr int16_t kStatusCardH = kScreenH;
 constexpr int16_t kMenuButtonX = 12;
 constexpr int16_t kMenuButtonY = 12;
 constexpr int16_t kMenuButtonSize = 48;
+constexpr int16_t kStatusCardX = 0;
+constexpr int16_t kStatusCardY = kMenuButtonY + kMenuButtonSize;
+constexpr int16_t kStatusCardW = kScreenW;
+constexpr int16_t kStatusCardH = kScreenH - kStatusCardY;
 constexpr int16_t kPickerRowX = 12;
 constexpr int16_t kPickerRowY = 68;
 constexpr int16_t kPickerRowW = 164;
@@ -92,12 +92,12 @@ void Ui::drawHome() {
     const uint16_t statusColor = display_.statusColor(settings_.status);
     display_.clear(theme);
 
-    // The status fills the screen; the top-left menu remains the only overlay.
+    // The status starts below the menu so the top-left control stays easy to hit.
     display_.button(kStatusCardX, kStatusCardY, kStatusCardW, kStatusCardH, "", statusColor, foreground);
-    display_.statusIcon(120, 132, settings_.status, foreground, statusColor);
+    display_.statusIcon(120, 158, settings_.status, foreground, statusColor);
     const char *label = statusLabel(settings_.status);
     const int16_t labelX = 120 - static_cast<int16_t>(strlen(label) * 18) / 2;
-    display_.text(labelX, 188, label, foreground, statusColor, 3);
+    display_.text(labelX, 214, label, foreground, statusColor, 3);
 
     display_.button(kMenuButtonX, kMenuButtonY, kMenuButtonSize, kMenuButtonSize, "", display_.muted(theme), foreground);
     display_.menuIcon(kMenuButtonX + kMenuButtonSize / 2, kMenuButtonY + kMenuButtonSize / 2, foreground);

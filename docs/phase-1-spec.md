@@ -27,7 +27,7 @@ Os estados, rótulos, cores e ícones estão definidos em `src/app/app_types.*` 
 ### Tela principal
 
 - Não há cabeçalho, rodapé nem texto auxiliar “toque para mudar”.
-- O status ocupa a tela inteira e mostra ícone e nome do status atual.
+- O status começa abaixo do botão de menu e mostra ícone e nome do status atual.
 - Tocar no status abre o seletor de status.
 - Um botão flutuante de 48×48 px com ícone de menu fica no canto superior esquerdo e abre Ajustes.
 - Não há indicador de rede: nesta fase o dispositivo é integralmente local.
@@ -103,7 +103,7 @@ constexpr uint8_t kRgbLedPins[] = {4, 16, 17};
 BOOT → HOME
 
 HOME
-  ├─ status em tela cheia → STATUS_PICKER
+  ├─ status abaixo do menu → STATUS_PICKER
   └─ menu → SETTINGS
 
 STATUS_PICKER
