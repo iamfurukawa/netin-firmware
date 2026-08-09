@@ -45,6 +45,21 @@ void NetinDisplay::fillCircle(int16_t x, int16_t y, int16_t radius, uint16_t col
     tft_.fillCircle(x, y, radius, panelColor(color));
 }
 
+void NetinDisplay::backIcon(int16_t x, int16_t y, uint16_t color) {
+    const uint16_t c = panelColor(color);
+    tft_.drawLine(x + 8, y - 14, x - 6, y, c);
+    tft_.drawLine(x + 7, y - 14, x - 7, y, c);
+    tft_.drawLine(x - 6, y, x + 8, y + 14, c);
+    tft_.drawLine(x - 7, y, x + 7, y + 14, c);
+}
+
+void NetinDisplay::menuIcon(int16_t x, int16_t y, uint16_t color) {
+    const uint16_t c = panelColor(color);
+    tft_.fillRoundRect(x - 14, y - 10, 28, 4, 2, c);
+    tft_.fillRoundRect(x - 14, y - 2, 28, 4, 2, c);
+    tft_.fillRoundRect(x - 14, y + 6, 28, 4, 2, c);
+}
+
 void NetinDisplay::settingsIcon(int16_t x, int16_t y, uint16_t color) {
     const uint16_t c = panelColor(color);
     // Eight teeth, ring and central hole form a conventional gear silhouette.

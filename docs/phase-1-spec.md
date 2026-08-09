@@ -27,30 +27,28 @@ Os estados, rótulos, cores e ícones estão definidos em `src/app/app_types.*` 
 ### Tela principal
 
 - Não há cabeçalho, rodapé nem texto auxiliar “toque para mudar”.
-- Um cartão grande ocupa a maior parte da tela e mostra ícone e nome do status atual.
-- Tocar no cartão é a única ação para abrir o seletor de status.
-- Um botão de 48×48 px com símbolo de engrenagem fica na parte inferior e abre Ajustes.
+- O status começa abaixo do botão de menu e mostra ícone e nome do status atual.
+- Tocar no status abre o seletor de status.
+- Um botão flutuante de 48×48 px com ícone de menu fica no canto superior esquerdo e abre Ajustes.
 - Não há indicador de rede: nesta fase o dispositivo é integralmente local.
 
 ### Seletor de status
 
 - Lista vertical com cartões de 48 px de altura e intervalo de 8 px entre eles.
-- Exibe quatro itens por vez, com os demais acessíveis por paginação vertical.
+- Exibe quatro itens por vez, com os demais acessíveis pelos botões `^` e `v` na lateral direita.
 - O estado atual é marcado por um ponto, sem o texto `OK`.
-- O rodapé contém `Voltar`, `^` e `v`.
+- Um botão flutuante de voltar com ícone fica no canto superior esquerdo e retorna à Home.
 - `^` mostra o grupo anterior; `v` mostra o próximo grupo.
-- Um botão de navegação indisponível não altera a lista nem seleciona um item oculto.
 - Somente cartões desenhados dentro da área visível recebem toque.
 
-### Confirmação
+### Alteração de status
 
-1. Tocar em um estado abre uma tela de confirmação.
-2. `Aplicar` atualiza e persiste o novo estado.
-3. `Voltar` retorna ao seletor sem alterar o estado atual.
+1. Tocar em uma opção atualiza e persiste o novo estado imediatamente.
+2. Voltar retorna à Home sem alterar o estado atual.
 
 ### Ajustes
 
-A tela de Ajustes é acessada apenas pela engrenagem da Home.
+A tela de Ajustes é acessada apenas pelo menu da Home.
 
 - Mostra o título `Ajustes`.
 - Permite alternar entre tema escuro e claro.
@@ -105,17 +103,13 @@ constexpr uint8_t kRgbLedPins[] = {4, 16, 17};
 BOOT → HOME
 
 HOME
-  ├─ cartão de status → STATUS_PICKER
-  └─ engrenagem → SETTINGS
+  ├─ status abaixo do menu → STATUS_PICKER
+  └─ menu → SETTINGS
 
 STATUS_PICKER
   ├─ ^ / v → página anterior / próxima
-  ├─ cartão visível → STATUS_CONFIRM
-  └─ Voltar → HOME
-
-STATUS_CONFIRM
-  ├─ Aplicar → salvar → HOME
-  └─ Voltar → STATUS_PICKER
+  ├─ cartão visível → salvar → HOME
+  └─ voltar → HOME
 
 SETTINGS
   ├─ Tema → alternar e salvar → SETTINGS
@@ -126,7 +120,7 @@ SETTINGS
 
 - Um `Tap` exige deslocamento menor que 12 px, duração máxima de 700 ms e lockout de 180 ms.
 - O leitor guarda a última coordenada válida antes de soltar, pois o controlador não garante coordenadas úteis no evento de liberação.
-- Eventos de swipe ainda são reconhecidos pelo módulo de touch, mas a UI da Fase 1 não os usa; a lista é navegada exclusivamente pelos botões `^` e `v`.
+- Eventos de swipe ainda são reconhecidos pelo módulo de touch, mas a UI usa apenas taps.
 
 ### Renderização
 
@@ -149,7 +143,7 @@ SETTINGS
 
 - [ ] Exibir erro/retry caso `Preferences::save()` falhe. Hoje a UI atualiza mesmo se a gravação NVS falhar.
 - [ ] Remover os eventos de swipe não usados ou reutilizá-los no futuro; a interface atual usa só `Tap`.
-- [ ] Decidir se a confirmação de status continua necessária após os testes de uso. Ela protege contra toque acidental, mas adiciona uma etapa.
+- [ ] Decidir se a alteração imediata de status precisa de proteção adicional contra toque acidental.
 - [ ] Definir se os quatro estados extras são definitivos ou apenas massa de teste do paginador.
 - [ ] Opcional: criar tela de diagnóstico deliberadamente acessível, conforme previsto na versão inicial da spec.
 
@@ -159,14 +153,14 @@ SETTINGS
 - [ ] Testar `^` e `v` no primeiro, intermediário e último grupo; botões inativos não podem selecionar itens.
 - [ ] Reiniciar e cortar/alimentar a placa após mudar status e tema para confirmar persistência NVS.
 - [ ] Executar teste de estabilidade de 30 minutos na Home, sem ruído, deslocamento ou reinício.
-- [ ] Testar limites de toque entre cartões, engrenagem, `Voltar`, `^` e `v`.
+- [ ] Testar limites de toque entre cartões, menu, voltar, `^` e `v`.
 - [ ] Confirmar que o LED RGB permanece apagado após cinco reinicializações.
 
 ## Critérios de aceite
 
 - O painel permanece visualmente estável por 30 minutos.
-- Os nove estados podem ser alcançados, confirmados e exibidos com a cor correta.
+- Os nove estados podem ser alcançados, selecionados e exibidos com a cor correta.
 - Status e tema sobrevivem a reinicialização e corte de energia.
 - Controles desabilitados e áreas vazias não acionam navegação nem seleção.
-- A engrenagem abre Ajustes e o tema pode ser alterado e restaurado.
+- O menu abre Ajustes e o tema pode ser alterado e restaurado.
 - O LED RGB fica apagado após iniciar.
