@@ -7,6 +7,7 @@
 #include "network/network_manager.h"
 #include "pairing/pairing_manager.h"
 #include "storage/settings_store.h"
+#include "sync/sync_manager.h"
 #include "ui/ui.h"
 
 namespace {
@@ -20,8 +21,9 @@ NetworkStore networkStore;
 NetworkManager network(networkStore, identity);
 PairingStore pairingStore;
 PairingManager pairing(identity, network, pairingStore);
+SyncManager syncManager(identity, network, pairing, settingsStore, settings);
 TouchInput touch(tft);
-Ui ui(display, settingsStore, settings, network, pairing, identity);
+Ui ui(display, settingsStore, settings, network, pairing, syncManager, identity);
 
 uint16_t kTouchCalibration[] = {652, 2994, 423, 3361, 3};
 constexpr uint8_t kRgbLedPins[] = {4, 16, 17};
@@ -40,12 +42,14 @@ void setup() {
     identity = identityStore.loadOrCreate();
     network.begin();
     pairing.begin();
+    syncManager.begin();
     ui.draw();
 }
 
 void loop() {
     network.tick();
     pairing.tick();
+    syncManager.tick();
     ui.tick();
     const TouchEvent event = touch.poll();
     ui.handle(event);

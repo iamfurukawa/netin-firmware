@@ -8,10 +8,12 @@
 #include "pairing/pairing_manager.h"
 #include "storage/settings_store.h"
 
+class SyncManager;
+
 class Ui {
   public:
-    Ui(NetinDisplay &display, SettingsStore &store, UserSettings &settings, NetworkManager &network, PairingManager &pairing, const DeviceIdentity &identity)
-        : display_(display), store_(store), settings_(settings), network_(network), pairing_(pairing), identity_(identity) {}
+    Ui(NetinDisplay &display, SettingsStore &store, UserSettings &settings, NetworkManager &network, PairingManager &pairing, SyncManager &sync, const DeviceIdentity &identity)
+        : display_(display), store_(store), settings_(settings), network_(network), pairing_(pairing), sync_(sync), identity_(identity) {}
     void draw();
     void tick();
     void handle(const TouchEvent &event);
@@ -31,10 +33,14 @@ class Ui {
     UserSettings &settings_;
     NetworkManager &network_;
     PairingManager &pairing_;
+    SyncManager &sync_;
     const DeviceIdentity &identity_;
     Screen screen_ = Screen::Home;
     int16_t pickerScroll_ = 0;
     NetworkState lastNetworkState_ = NetworkState::Unconfigured;
     PairingState lastPairingState_ = PairingState::Unpaired;
+    PresenceStatus lastStatus_ = PresenceStatus::Available;
+    uint8_t lastPendingCount_ = 0;
+    bool statusQueueFull_ = false;
     bool confirmForgetNetworks_ = false;
 };

@@ -1,5 +1,7 @@
 #include "ui.h"
 
+#include "sync/sync_manager.h"
+
 namespace {
 constexpr int16_t kScreenW = 240;
 constexpr int16_t kScreenH = 320;
@@ -74,6 +76,15 @@ void Ui::draw() {
 }
 
 void Ui::tick() {
+    if (settings_.status != lastStatus_) {
+        lastStatus_ = settings_.status;
+        if (screen_ == Screen::Home) draw();
+    }
+    const uint8_t pendingCount = sync_.pendingCount();
+    if (pendingCount != lastPendingCount_) {
+        lastPendingCount_ = pendingCount;
+        if (screen_ == Screen::Home) draw();
+    }
     const NetworkState current = network_.state();
     if (current != lastNetworkState_) {
         lastNetworkState_ = current;
@@ -98,6 +109,12 @@ void Ui::drawHome() {
     const char *label = statusLabel(settings_.status);
     const int16_t labelX = 120 - static_cast<int16_t>(strlen(label) * 18) / 2;
     display_.text(labelX, 214, label, foreground, statusColor, 3);
+
+    if (statusQueueFull_) {
+        display_.text(58, 278, "Fila cheia: status local", foreground, statusColor, 1);
+    } else if (sync_.pendingCount() > 0) {
+        display_.text(76, 278, "Sincronizando...", foreground, statusColor, 1);
+    }
 
     display_.button(kMenuButtonX, kMenuButtonY, kMenuButtonSize, kMenuButtonSize, "", display_.muted(theme), foreground);
     display_.menuIcon(kMenuButtonX + kMenuButtonSize / 2, kMenuButtonY + kMenuButtonSize / 2, foreground);
@@ -192,9 +209,13 @@ void Ui::drawDevice() {
 }
 
 void Ui::applyStatus(PresenceStatus status) {
-    if (status != settings_.status) ++settings_.statusChangeCount;
+    const bool changed = status != settings_.status;
+    if (changed) ++settings_.statusChangeCount;
     settings_.status = status;
     store_.save(settings_);
+    lastStatus_ = status;
+    statusQueueFull_ = changed && !sync_.enqueueStatus(status);
+    lastPendingCount_ = sync_.pendingCount();
     screen_ = Screen::Home;
     draw();
 }

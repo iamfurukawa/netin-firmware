@@ -29,3 +29,5 @@ constexpr uint8_t kStatusCount = static_cast<uint8_t>(PresenceStatus::DoNotDistu
 bool isValidStatus(uint8_t value);
 bool isValidTheme(uint8_t value);
 const char *statusLabel(PresenceStatus status);
+const char *statusWireName(PresenceStatus status);
+bool statusFromWireName(const String &value, PresenceStatus &status);

@@ -22,8 +22,10 @@ class PairingManager {
     void begin();
     void tick();
     void requestCode();
+    void invalidateCredential();
     PairingState state() const { return state_; }
     const String &code() const { return code_; }
+    String credential() const { return store_.loadCredential(); }
 
   private:
     bool post(const char *path, String &response, int &statusCode);

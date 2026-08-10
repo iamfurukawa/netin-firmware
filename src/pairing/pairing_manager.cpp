@@ -77,6 +77,13 @@ void PairingManager::requestCode() {
     requestPending_ = true;
 }
 
+void PairingManager::invalidateCredential() {
+    store_.clearCredential();
+    code_ = "";
+    requestPending_ = false;
+    state_ = PairingState::Unpaired;
+}
+
 bool PairingManager::post(const char *path, String &response, int &statusCode) {
     WiFiClientSecure client;
     client.setCACert(kApiRootCertificate);

@@ -98,7 +98,10 @@ A PWA é a superfície para configuração e gestão, não uma cópia completa d
 - Nesta fase, a sessão tem validade fixa de 30 dias. Ao expirar, a API responde
   `401`, limpa o cookie quando ele ainda estiver presente e a PWA retorna ao
   login. Renovação deslizante de sessão fica para a Fase 3.
-- A PWA apresenta estados explícitos de dispositivo: online, offline, não pareado e com sincronização pendente.
+- A PWA apresenta estados explícitos de dispositivo: conectado, desconectado e aguardando a primeira conexão. A pendência de uma alteração criada offline é indicada pela própria placa, que é a única superfície que conhece a fila local antes da reconexão.
+- O estado online é derivado do último heartbeat MQTT recebido: até 90 segundos é
+  conectado; depois disso é desconectado. Antes do primeiro heartbeat, a PWA
+  informa que o dispositivo ainda aguarda conexão.
 - O portal em `192.168.4.1` não é parte da PWA: é uma página local e temporária hospedada pela placa, usada somente para configurar Wi-Fi. Após a placa entrar na internet, o usuário retorna à PWA para parear a conta.
 
 Telas mínimas:
@@ -141,6 +144,9 @@ O backend é a fonte de verdade para conta, perfil, vínculo de dispositivos e s
 - O Cloudflare Tunnel recebe o hostname curinga e o encaminha ao Nginx; o Nginx faz o upgrade WebSocket e encaminha somente `netin-mqtt.13997906387.xyz` ao listener WebSocket interno do Mosquitto. A PWA usa HTTPS para suas operações e não se conecta ao broker diretamente.
 - O serviço Node/Fastify conecta-se ao Mosquitto pela rede Docker interna.
 - Eventos, comandos e confirmações usam MQTT QoS 1. QoS 1 pode entregar duplicatas, portanto o backend confirma eventos de status de forma idempotente por `eventId`.
+- Enquanto estiver conectado, o firmware publica um heartbeat leve a cada 60
+  segundos. O backend usa apenas esse sinal para atualizar a disponibilidade do
+  dispositivo; ele não altera o status da pessoa.
 - Mensagens usam versão de protocolo explícita e payloads pequenos em JSON ou formato binário documentado.
 - O estado atual é publicado como mensagem MQTT retida para que o dispositivo receba a versão vigente ao reconectar.
 - Tópicos iniciais: `netin/v1/devices/{deviceId}/events`, `commands`, `ack` e `state`.
@@ -239,15 +245,18 @@ Os contratos HTTP e MQTT devem ser versionados e compartilhados entre os reposit
 - [x] Backend inicial: Node.js/TypeScript com Fastify, PostgreSQL e Mosquitto na Raspberry Pi.
 - [x] Portal Wi-Fi cativo com fallback em `192.168.4.1`; QR foi adiado.
 - [x] Endpoints públicos: `netin.13997906387.xyz` (PWA), `netin-server.13997906387.xyz` (API) e `netin-mqtt.13997906387.xyz` (MQTT/WSS). Cloudflare Tunnel termina TLS; o firmware valida a CA do certificado público.
-- [ ] Definir formato/tamanho da fila persistente e política de recuperação quando estiver cheia.
-- [x] Validado Wi-Fi, portal, NTP e HTTPS de pareamento: firmware ocupa aproximadamente 78% da partição padrão de aplicação. MQTT/TLS e a tabela OTA continuam pendentes de validação.
+- [x] Fila persistente definida: até 20 eventos, FIFO, reenvio a cada 5 segundos e remoção apenas após `ack` idempotente do backend. Quando cheia, o status local continua utilizável e a tela informa o erro recuperável.
+- [x] Validado Wi-Fi, portal, NTP, HTTPS de pareamento, MQTT/WSS e TLS: firmware ocupa aproximadamente 82,3% da partição padrão de aplicação. OTA permanece fora desta entrega.
 
 ### Infraestrutura já validada
 
 - Raspberry Pi atrás de CGNAT com Cloudflare Tunnel apontando o curinga de domínio ao Nginx na rede Docker `nginxnet`.
 - Nginx roteia `netin-server.13997906387.xyz` para `netin-server:3000`, `netin.13997906387.xyz` para `netin-web:80` e `netin-mqtt.13997906387.xyz` para `mosquitto:9001` com upgrade WebSocket e HTTP/1.1. O nome Docker do container do broker é `netin-mosquitto`, mas o nome de serviço resolvido na rede é `mosquitto`.
 - API e PWA possuem runners GitHub Actions ARM64 próprios na Raspberry; somente pushes na `main` executam deploy. O upload físico do firmware permanece manual.
-- API e PWA publicadas com autenticação por e-mail/senha, sessão por cookie, listagem/remoção de dispositivos e pareamento por código. Sincronização de status permanece pendente.
+- API e PWA publicadas com autenticação por e-mail/senha, sessão por cookie,
+  edição de perfil, listagem/remoção de dispositivos, presença por heartbeat,
+  pareamento por código e consulta/alteração de status. O firmware MQTT/WSS usa
+  a credencial revogável do dispositivo e mantém fila offline persistente.
 
 > Os nomes públicos são planos de propósito. O certificado Universal SSL e o curinga `*.13997906387.xyz` não cobrem subdomínios com dois níveis, como `netin.server.13997906387.xyz`.
 
@@ -272,26 +281,24 @@ os testes de aceite finais.
 
 ### Pendente — sincronização do backend
 
-- [ ] **P0 — corrigir validação de deploy:** o health check deve executar dentro
-  do container `netin-server` ou pela rede Docker, nunca em `localhost:3000` no
-  host. Isso evita aprovar o deploy ao consultar outro processo.
-- [ ] Modelar status atual, eventos, deduplicação e contratos HTTP/MQTT versionados.
-- [ ] Configurar autenticação dinâmica/ACL do Mosquitto com credenciais revogáveis por dispositivo.
-- [ ] Conectar o servidor ao broker e aplicar eventos MQTT de modo idempotente.
+- [x] Health check de deploy executado dentro do container `netin-server`.
+- [x] Modelar status atual, eventos, deduplicação e contratos MQTT versionados no backend.
+- [x] Configurar Dynamic Security/ACL do Mosquitto com credenciais revogáveis por dispositivo.
+- [x] Conectar o servidor ao broker e aplicar eventos MQTT de modo idempotente.
 
 ### Pendente — PWA
 
-- [ ] Implementar perfil sem avatar: nome de exibição e cor opcional.
-- [ ] Implementar consulta e alteração de status sincronizado.
-- [ ] Adicionar service worker real e política de cache; o manifest atual, por
-  si só, não torna a aplicação disponível offline.
+- [x] Implementar perfil sem avatar no cadastro e edição posterior de nome e cor.
+- [x] Implementar consulta e alteração de status no backend e PWA.
+- [x] Adicionar manifest e service worker para o shell da aplicação.
+- [x] Mostrar estado real aproximado do dispositivo por heartbeat MQTT (conectado, desconectado ou aguardando conexão).
 
 ### Pendente — firmware conectado
 
-- [ ] Informar no portal, antes da confirmação, quando uma sexta rede substituir a mais antiga.
-- [ ] Implementar MQTT/WSS com TLS, credencial revogável por dispositivo e
-  tópicos versionados.
-- [ ] Implementar fila persistente, `eventId`, confirmação do backend e
+- [x] Informar no portal, antes da confirmação, quando uma sexta rede substituir a mais antiga.
+- [x] Implementar MQTT/WSS com TLS, credencial revogável por dispositivo,
+  tópicos versionados e detecção de revogação.
+- [x] Implementar fila persistente, `eventId`, confirmação do backend e
   reconciliação de conflitos/offline.
 
 ### Validação de encerramento
@@ -300,7 +307,7 @@ os testes de aceite finais.
 - [ ] Exercitar pareamento, revogação e remoção de dispositivo.
 - [ ] Confirmar status bidirecional entre PWA e placa conectada.
 - [ ] Exercitar API/broker indisponíveis, fila cheia, duplicatas e conflitos.
-- [ ] Medir flash/RAM com Wi-Fi, portal, TLS e MQTT e validar a preparação OTA.
+- [ ] Medir flash/RAM com Wi-Fi, portal, TLS e MQTT.
 
 ## Plano de implementação
 

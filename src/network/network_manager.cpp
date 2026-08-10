@@ -19,6 +19,22 @@ String portalPassword() {
     snprintf(value, sizeof(value), "%08lu", static_cast<unsigned long>(esp_random() % 100000000));
     return String(value);
 }
+
+String htmlEscape(const String &value) {
+    String escaped;
+    escaped.reserve(value.length());
+    for (const char character : value) {
+        switch (character) {
+            case '&': escaped += "&amp;"; break;
+            case '<': escaped += "&lt;"; break;
+            case '>': escaped += "&gt;"; break;
+            case '"': escaped += "&quot;"; break;
+            case '\'': escaped += "&#39;"; break;
+            default: escaped += character; break;
+        }
+    }
+    return escaped;
+}
 }
 
 bool NetworkStore::hasProfiles() const {
@@ -66,6 +82,22 @@ bool NetworkStore::firstProfile(String &ssid, String &password) const {
     }
     prefs.end();
     return false;
+}
+
+bool NetworkStore::willReplaceProfile(const String &ssid) const {
+    if (ssid.isEmpty()) return false;
+    Preferences prefs;
+    if (!prefs.begin(kNamespace, true)) return false;
+    uint8_t count = 0;
+    bool alreadySaved = false;
+    for (uint8_t index = 0; index < kMaxProfiles; ++index) {
+        const String savedSsid = prefs.getString(keyFor("ssid", index).c_str(), "");
+        if (savedSsid.isEmpty()) continue;
+        ++count;
+        if (savedSsid == ssid) alreadySaved = true;
+    }
+    prefs.end();
+    return !alreadySaved && count >= kMaxProfiles;
 }
 
 bool NetworkStore::saveProfile(const String &ssid, const String &password) const {
@@ -160,6 +192,15 @@ void NetworkManager::configurePortalRoutes() {
         const String password = server_.arg("password");
         if (ssid.isEmpty()) {
             server_.send(400, "text/plain", "SSID obrigatorio");
+            return;
+        }
+        if (store_.willReplaceProfile(ssid) && server_.arg("replace") != "1") {
+            const String page = "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
+                "<title>Confirmar rede</title><style>body{font:16px sans-serif;max-width:28rem;margin:2rem auto;padding:1rem}button{box-sizing:border-box;width:100%;padding:.8rem;margin:.6rem 0}</style>"
+                "<h1>Substituir rede salva?</h1><p>O Netin guarda ate 5 redes. Ao continuar, a rede usada ha mais tempo sera substituida.</p>"
+                "<form method=post action=/save><input type=hidden name=ssid value='" + htmlEscape(ssid) + "'><input type=hidden name=password value='" + htmlEscape(password) + "'><input type=hidden name=replace value=1><button>Substituir e conectar</button></form>"
+                "<a href='/'>Cancelar</a>";
+            server_.send(200, "text/html; charset=utf-8", page);
             return;
         }
         pendingSsid_ = ssid;

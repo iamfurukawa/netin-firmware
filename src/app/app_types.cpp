@@ -22,3 +22,19 @@ const char *statusLabel(PresenceStatus status) {
     }
     return "Disponivel";
 }
+
+const char *statusWireName(PresenceStatus status) {
+    static constexpr const char *kNames[] = {"available", "busy", "focused", "away", "invisible", "in_call", "gaming", "sleeping", "do_not_disturb"};
+    const uint8_t index = static_cast<uint8_t>(status);
+    return index < kStatusCount ? kNames[index] : kNames[0];
+}
+
+bool statusFromWireName(const String &value, PresenceStatus &status) {
+    for (uint8_t index = 0; index < kStatusCount; ++index) {
+        if (value == statusWireName(static_cast<PresenceStatus>(index))) {
+            status = static_cast<PresenceStatus>(index);
+            return true;
+        }
+    }
+    return false;
+}
