@@ -54,6 +54,18 @@ String formatUtc(uint64_t epoch) {
     strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &timeInfo);
     return String(timestamp);
 }
+
+String reactionLabel(const String &reaction) {
+    if (reaction == "👍") return "Gostei";
+    if (reaction == "❤️") return "Coracao";
+    if (reaction == "😂") return "Risada";
+    if (reaction == "🎉") return "Festa";
+    if (reaction == "👋") return "Ola";
+    if (reaction == "👏") return "Palmas";
+    if (reaction == "🔥") return "Fogo";
+    if (reaction == "✨") return "Brilho";
+    return "Reacao";
+}
 }
 
 SyncManager *SyncManager::instance_ = nullptr;
@@ -151,11 +163,43 @@ void SyncManager::publishHeartbeat() {
 
 void SyncManager::handleCommand(const char *payload, size_t length) {
     const String body(payload, length);
-    if (jsonString(body, "type") != "status_sync") return;
-    PresenceStatus status;
-    if (!statusFromWireName(jsonString(body, "status"), status)) return;
-    settings_.status = status;
-    settingsStore_.save(settings_);
+    const String type = jsonString(body, "type");
+    if (type == "status_sync") {
+        PresenceStatus status;
+        if (!statusFromWireName(jsonString(body, "status"), status)) return;
+        settings_.status = status;
+        settingsStore_.save(settings_);
+    } else if (type == "social_event") {
+        handleSocialEvent(body);
+    }
+}
+
+void SyncManager::handleSocialEvent(const String &body) {
+    const String eventId = jsonString(body, "eventId");
+    const String interactionType = jsonString(body, "interactionType");
+    if (eventId.isEmpty() || interactionType.isEmpty()) return;
+
+    if (!socialStore_.contains(eventId)) {
+        SocialInteraction next;
+        next.eventId = eventId;
+        next.senderName = jsonString(body, "name");
+        if (next.senderName.isEmpty()) next.senderName = "Alguem";
+        next.senderName = next.senderName.substring(0, 24);
+        next.type = interactionType;
+        if (interactionType == "message") next.content = jsonString(body, "text").substring(0, 80);
+        else if (interactionType == "reaction") next.content = reactionLabel(jsonString(body, "reaction"));
+        else if (interactionType == "poke") next.content = "Cutucou voce";
+        else return;
+        if (next.content.isEmpty()) return;
+        if (!socialStore_.remember(eventId)) return;
+        interaction_ = next;
+        ++interactionRevision_;
+    }
+    publishSocialAcknowledgement(eventId);
+}
+
+void SyncManager::dismissInteraction() {
+    interaction_ = SocialInteraction{};
 }
 
 bool SyncManager::enqueueStatus(PresenceStatus status) {
@@ -191,4 +235,11 @@ void SyncManager::handleAcknowledgement(const char *payload, size_t length) {
         inFlightEventId_ = "";
         lastPublishAt_ = 0;
     }
+}
+
+void SyncManager::publishSocialAcknowledgement(const String &eventId) {
+    if (!client_ || eventId.isEmpty()) return;
+    const String topic = String("netin/v1/devices/") + identity_.id + "/events";
+    const String payload = String("{\"protocolVersion\":1,\"type\":\"social_ack\",\"eventId\":\"") + eventId + "\"}";
+    esp_mqtt_client_publish(client_, topic.c_str(), payload.c_str(), 0, 1, 0);
 }

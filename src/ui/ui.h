@@ -19,13 +19,14 @@ class Ui {
     void handle(const TouchEvent &event);
 
   private:
-    enum class Screen : uint8_t { Home, StatusPicker, Settings, Network, Device };
+    enum class Screen : uint8_t { Home, StatusPicker, Settings, Network, Device, Interaction };
     bool hit(uint16_t x, uint16_t y, int16_t rx, int16_t ry, int16_t rw, int16_t rh) const;
     void drawHome();
     void drawStatusPicker();
     void drawSettings();
     void drawNetwork();
     void drawDevice();
+    void drawInteraction();
     void applyStatus(PresenceStatus status);
 
     NetinDisplay &display_;
@@ -41,6 +42,7 @@ class Ui {
     PairingState lastPairingState_ = PairingState::Unpaired;
     PresenceStatus lastStatus_ = PresenceStatus::Available;
     uint8_t lastPendingCount_ = 0;
+    uint32_t lastInteractionRevision_ = 0;
     bool statusQueueFull_ = false;
     bool confirmForgetNetworks_ = false;
 };

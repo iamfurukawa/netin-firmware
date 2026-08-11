@@ -59,6 +59,20 @@ const char *pairingLabel(PairingState state) {
     }
     return "Desconhecido";
 }
+
+void drawInteractionText(NetinDisplay &display, const String &text, uint16_t foreground, uint16_t background) {
+    String remaining = text;
+    for (uint8_t line = 0; line < 3 && !remaining.isEmpty(); ++line) {
+        int16_t split = min(static_cast<int16_t>(32), static_cast<int16_t>(remaining.length()));
+        if (split < remaining.length()) {
+            const int16_t space = remaining.lastIndexOf(' ', split);
+            if (space > 0) split = space;
+        }
+        display.text(20, 128 + line * 18, remaining.substring(0, split).c_str(), foreground, background, 1);
+        remaining = remaining.substring(split);
+        remaining.trim();
+    }
+}
 }
 
 bool Ui::hit(uint16_t x, uint16_t y, int16_t rx, int16_t ry, int16_t rw, int16_t rh) const {
@@ -72,6 +86,7 @@ void Ui::draw() {
         case Screen::Settings: drawSettings(); break;
         case Screen::Network: drawNetwork(); break;
         case Screen::Device: drawDevice(); break;
+        case Screen::Interaction: drawInteraction(); break;
     }
 }
 
@@ -84,6 +99,11 @@ void Ui::tick() {
     if (pendingCount != lastPendingCount_) {
         lastPendingCount_ = pendingCount;
         if (screen_ == Screen::Home) draw();
+    }
+    if (sync_.interactionRevision() != lastInteractionRevision_) {
+        lastInteractionRevision_ = sync_.interactionRevision();
+        screen_ = Screen::Interaction;
+        draw();
     }
     const NetworkState current = network_.state();
     if (current != lastNetworkState_) {
@@ -208,6 +228,20 @@ void Ui::drawDevice() {
     display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(theme), foreground);
 }
 
+void Ui::drawInteraction() {
+    const Theme theme = settings_.theme;
+    const uint16_t background = display_.background(theme);
+    const uint16_t foreground = display_.foreground(theme);
+    const SocialInteraction &interaction = sync_.interaction();
+    display_.clear(theme);
+    display_.text(20, 28, "Interacao", foreground, background, 3);
+    display_.text(20, 68, interaction.senderName.c_str(), display_.statusColor(PresenceStatus::Focused), background, 2);
+    const char *kind = interaction.type == "message" ? "Mensagem" : interaction.type == "poke" ? "Cutucada" : "Reacao";
+    display_.text(20, 98, kind, foreground, background, 1);
+    drawInteractionText(display_, interaction.content, foreground, background);
+    display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(theme), foreground);
+}
+
 void Ui::applyStatus(PresenceStatus status) {
     const bool changed = status != settings_.status;
     if (changed) ++settings_.statusChangeCount;
@@ -267,6 +301,15 @@ void Ui::handle(const TouchEvent &event) {
     }
 
     if (event.type != TouchEventType::Tap) return;
+
+    if (screen_ == Screen::Interaction) {
+        if (hit(event.x, event.y, kBackX, kBackY, kBackW, kBackH)) {
+            sync_.dismissInteraction();
+            screen_ = Screen::Home;
+            draw();
+        }
+        return;
+    }
 
     if (screen_ == Screen::Settings) {
         if (hit(event.x, event.y, 20, kThemeY, 200, kSettingsRowH)) {
