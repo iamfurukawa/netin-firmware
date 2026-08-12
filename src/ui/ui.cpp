@@ -62,13 +62,13 @@ const char *pairingLabel(PairingState state) {
 
 void drawInteractionText(NetinDisplay &display, const String &text, uint16_t foreground, uint16_t background) {
     String remaining = text;
-    for (uint8_t line = 0; line < 3 && !remaining.isEmpty(); ++line) {
-        int16_t split = min(static_cast<int16_t>(32), static_cast<int16_t>(remaining.length()));
+    for (uint8_t line = 0; line < 6 && !remaining.isEmpty(); ++line) {
+        int16_t split = min(static_cast<int16_t>(18), static_cast<int16_t>(remaining.length()));
         if (split < remaining.length()) {
             const int16_t space = remaining.lastIndexOf(' ', split);
             if (space > 0) split = space;
         }
-        display.text(20, 128 + line * 18, remaining.substring(0, split).c_str(), foreground, background, 1);
+        display.text(18, 70 + line * 26, remaining.substring(0, split).c_str(), foreground, background, 2);
         remaining = remaining.substring(split);
         remaining.trim();
     }
@@ -234,12 +234,13 @@ void Ui::drawInteraction() {
     const uint16_t foreground = display_.foreground(theme);
     const SocialInteraction &interaction = sync_.interaction();
     display_.clear(theme);
-    display_.text(20, 28, "Interacao", foreground, background, 3);
-    display_.text(20, 68, interaction.senderName.c_str(), display_.statusColor(PresenceStatus::Focused), background, 2);
-    const char *kind = interaction.type == "message" ? "Mensagem" : interaction.type == "poke" ? "Cutucada" : "Reacao";
-    display_.text(20, 98, kind, foreground, background, 1);
+    display_.text(18, 18, interaction.senderName.c_str(), display_.statusColor(PresenceStatus::Focused), background, 2);
+    if (interaction.type == "reaction") {
+        display_.reactionIcon(120, 160, 140, interaction.content.c_str(), interaction.content == "Coracao" ? TFT_RED : display_.statusColor(PresenceStatus::Focused));
+        return;
+    }
     drawInteractionText(display_, interaction.content, foreground, background);
-    display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(theme), foreground);
+    display_.button(12, 258, 216, 48, "Voltar", display_.muted(theme), foreground);
 }
 
 void Ui::applyStatus(PresenceStatus status) {
@@ -303,7 +304,7 @@ void Ui::handle(const TouchEvent &event) {
     if (event.type != TouchEventType::Tap) return;
 
     if (screen_ == Screen::Interaction) {
-        if (hit(event.x, event.y, kBackX, kBackY, kBackW, kBackH)) {
+        if (sync_.interaction().type == "reaction" || hit(event.x, event.y, 12, 258, 216, 48)) {
             sync_.dismissInteraction();
             screen_ = Screen::Home;
             draw();

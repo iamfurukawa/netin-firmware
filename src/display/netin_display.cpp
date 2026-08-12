@@ -1,5 +1,7 @@
 #include "netin_display.h"
 
+#include <cstring>
+
 void NetinDisplay::begin() {
     tft_.init();
     tft_.setRotation(0);
@@ -43,6 +45,50 @@ void NetinDisplay::button(int16_t x, int16_t y, int16_t w, int16_t h, const char
 
 void NetinDisplay::fillCircle(int16_t x, int16_t y, int16_t radius, uint16_t color) {
     tft_.fillCircle(x, y, radius, panelColor(color));
+}
+
+void NetinDisplay::heart(int16_t x, int16_t y, int16_t size, uint16_t color) {
+    const uint16_t c = panelColor(color);
+    const int16_t radius = size / 4;
+    tft_.fillCircle(x - radius, y - radius / 2, radius, c);
+    tft_.fillCircle(x + radius, y - radius / 2, radius, c);
+    tft_.fillTriangle(x - size / 2, y - radius / 2, x + size / 2, y - radius / 2, x, y + size / 2, c);
+}
+
+void NetinDisplay::reactionIcon(int16_t x, int16_t y, int16_t size, const char *reaction, uint16_t color) {
+    const uint16_t c = panelColor(color);
+    if (strcmp(reaction, "Coracao") == 0) {
+        heart(x, y, size, color);
+    } else if (strcmp(reaction, "Risada") == 0) {
+        tft_.fillCircle(x, y, size / 2, c);
+        tft_.fillCircle(x - size / 6, y - size / 8, size / 18, panelColor(TFT_BLACK));
+        tft_.fillCircle(x + size / 6, y - size / 8, size / 18, panelColor(TFT_BLACK));
+        tft_.drawCircle(x, y + size / 10, size / 4, panelColor(TFT_BLACK));
+    } else if (strcmp(reaction, "Fogo") == 0) {
+        tft_.fillTriangle(x, y - size / 2, x - size / 3, y + size / 2, x + size / 3, y + size / 2, c);
+        tft_.fillCircle(x, y + size / 4, size / 3, c);
+    } else if (strcmp(reaction, "Brilho") == 0) {
+        tft_.fillTriangle(x, y - size / 2, x - size / 7, y, x + size / 7, y, c);
+        tft_.fillTriangle(x, y + size / 2, x - size / 7, y, x + size / 7, y, c);
+        tft_.fillTriangle(x - size / 2, y, x, y - size / 7, x, y + size / 7, c);
+        tft_.fillTriangle(x + size / 2, y, x, y - size / 7, x, y + size / 7, c);
+    } else if (strcmp(reaction, "Festa") == 0) {
+        tft_.fillCircle(x - size / 4, y - size / 4, size / 9, c);
+        tft_.fillCircle(x + size / 4, y - size / 5, size / 9, c);
+        tft_.fillCircle(x, y + size / 4, size / 9, c);
+        tft_.drawLine(x - size / 2, y + size / 2, x + size / 2, y - size / 2, c);
+        tft_.drawLine(x - size / 2, y - size / 6, x + size / 3, y + size / 2, c);
+    } else if (strcmp(reaction, "Ola") == 0) {
+        tft_.fillCircle(x, y + size / 8, size / 4, c);
+        for (int8_t finger = -2; finger <= 2; ++finger) tft_.fillRoundRect(x + finger * size / 8 - size / 16, y - size / 2, size / 8, size / 2, size / 16, c);
+    } else if (strcmp(reaction, "Palmas") == 0) {
+        tft_.fillRoundRect(x - size / 3, y - size / 3, size / 4, size * 2 / 3, size / 10, c);
+        tft_.fillRoundRect(x + size / 12, y - size / 3, size / 4, size * 2 / 3, size / 10, c);
+    } else {
+        // "Gostei" and unknown reactions use a clear, full-screen affirmative mark.
+        tft_.fillRoundRect(x - size / 8, y - size / 2, size / 4, size * 3 / 4, size / 12, c);
+        tft_.fillTriangle(x - size / 3, y - size / 8, x + size / 8, y - size / 8, x - size / 3, y + size / 3, c);
+    }
 }
 
 void NetinDisplay::backIcon(int16_t x, int16_t y, uint16_t color) {

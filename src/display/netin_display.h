@@ -12,6 +12,8 @@ class NetinDisplay {
     void text(int16_t x, int16_t y, const char *value, uint16_t fg, uint16_t bg, uint8_t size = 1);
     void button(int16_t x, int16_t y, int16_t w, int16_t h, const char *label, uint16_t fill, uint16_t fg);
     void fillCircle(int16_t x, int16_t y, int16_t radius, uint16_t color);
+    void heart(int16_t x, int16_t y, int16_t size, uint16_t color);
+    void reactionIcon(int16_t x, int16_t y, int16_t size, const char *reaction, uint16_t color);
     void backIcon(int16_t x, int16_t y, uint16_t color);
     void menuIcon(int16_t x, int16_t y, uint16_t color);
     void settingsIcon(int16_t x, int16_t y, uint16_t color);
