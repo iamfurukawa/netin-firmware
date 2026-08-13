@@ -239,6 +239,11 @@ void Ui::drawInteraction() {
         display_.reactionIcon(120, 160, 140, interaction.content.c_str(), interaction.content == "Coracao" ? TFT_RED : display_.statusColor(PresenceStatus::Focused));
         return;
     }
+    if (interaction.type == "poke") {
+        display_.text(48, 70, "Cutucou voce", TFT_ORANGE, background, 2);
+        display_.pokeIcon(120, 172, 140, TFT_ORANGE);
+        return;
+    }
     drawInteractionText(display_, interaction.content, foreground, background);
     display_.button(12, 258, 216, 48, "Voltar", display_.muted(theme), foreground);
 }
@@ -304,7 +309,7 @@ void Ui::handle(const TouchEvent &event) {
     if (event.type != TouchEventType::Tap) return;
 
     if (screen_ == Screen::Interaction) {
-        if (sync_.interaction().type == "reaction" || hit(event.x, event.y, 12, 258, 216, 48)) {
+        if (sync_.interaction().type == "reaction" || sync_.interaction().type == "poke" || hit(event.x, event.y, 12, 258, 216, 48)) {
             sync_.dismissInteraction();
             screen_ = Screen::Home;
             draw();

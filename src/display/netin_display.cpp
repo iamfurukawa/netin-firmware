@@ -91,6 +91,16 @@ void NetinDisplay::reactionIcon(int16_t x, int16_t y, int16_t size, const char *
     }
 }
 
+void NetinDisplay::pokeIcon(int16_t x, int16_t y, int16_t size, uint16_t color) {
+    const uint16_t c = panelColor(color);
+    const int16_t radius = size / 3;
+    tft_.drawCircle(x, y, radius, c);
+    tft_.drawCircle(x, y, radius + 10, c);
+    tft_.drawCircle(x, y, radius + 20, c);
+    tft_.fillRoundRect(x - 7, y - radius / 2, 14, radius, 5, c);
+    tft_.fillCircle(x, y + radius / 2 + 14, 8, c);
+}
+
 void NetinDisplay::backIcon(int16_t x, int16_t y, uint16_t color) {
     const uint16_t c = panelColor(color);
     tft_.drawLine(x + 8, y - 14, x - 6, y, c);
