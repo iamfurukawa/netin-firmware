@@ -4,9 +4,11 @@
 #include "display/netin_display.h"
 #include "device/device_identity.h"
 #include "input/touch_input.h"
+#include "media/media_manager.h"
 #include "network/network_manager.h"
 #include "pairing/pairing_manager.h"
 #include "storage/settings_store.h"
+#include "storage/sd_card.h"
 #include "sync/sync_manager.h"
 #include "ui/ui.h"
 
@@ -21,9 +23,11 @@ NetworkStore networkStore;
 NetworkManager network(networkStore, identity);
 PairingStore pairingStore;
 PairingManager pairing(identity, network, pairingStore);
-SyncManager syncManager(identity, network, pairing, settingsStore, settings);
+SdCardManager sdCard;
+MediaManager media(tft, sdCard);
+SyncManager syncManager(identity, network, pairing, settingsStore, settings, media);
 TouchInput touch(tft);
-Ui ui(display, settingsStore, settings, network, pairing, syncManager, identity);
+Ui ui(display, settingsStore, settings, network, pairing, syncManager, identity, sdCard, media);
 
 uint16_t kTouchCalibration[] = {652, 2994, 423, 3361, 3};
 constexpr uint8_t kRgbLedPins[] = {4, 16, 17};
@@ -36,6 +40,8 @@ void setup() {
         digitalWrite(pin, HIGH);  // RGB LED is active-low.
     }
 
+    sdCard.begin();
+    media.prepareTestImage();
     display.begin();
     tft.setTouch(kTouchCalibration);
     settings = settingsStore.load();
@@ -50,6 +56,7 @@ void loop() {
     network.tick();
     pairing.tick();
     syncManager.tick();
+    media.tick();
     ui.tick();
     const TouchEvent event = touch.poll();
     ui.handle(event);

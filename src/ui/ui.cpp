@@ -37,6 +37,9 @@ constexpr int16_t kThemeY = 72;
 constexpr int16_t kNetworkY = 128;
 constexpr int16_t kDeviceY = 184;
 constexpr int16_t kSettingsRowH = 48;
+constexpr int16_t kSdDiagnosticPairedY = 182;
+constexpr int16_t kSdDiagnosticUnpairedY = 206;
+constexpr int16_t kMediaPreviewY = 230;
 
 const char *networkLabel(NetworkState state) {
     switch (state) {
@@ -58,6 +61,15 @@ const char *pairingLabel(PairingState state) {
         case PairingState::Error: return "Falha ao conectar";
     }
     return "Desconhecido";
+}
+
+const char *sdLabel(SdCardState state) {
+    switch (state) {
+        case SdCardState::Ready: return "SD pronto";
+        case SdCardState::Unavailable: return "SD indisponivel";
+        case SdCardState::Error: return "SD com erro";
+    }
+    return "SD desconhecido";
 }
 
 void drawInteractionText(NetinDisplay &display, const String &text, uint16_t foreground, uint16_t background) {
@@ -87,6 +99,8 @@ void Ui::draw() {
         case Screen::Network: drawNetwork(); break;
         case Screen::Device: drawDevice(); break;
         case Screen::Interaction: drawInteraction(); break;
+        case Screen::MediaTest: drawMediaTest(); break;
+        case Screen::MediaReceived: break;
     }
 }
 
@@ -100,7 +114,15 @@ void Ui::tick() {
         lastPendingCount_ = pendingCount;
         if (screen_ == Screen::Home) draw();
     }
-    if (sync_.interactionRevision() != lastInteractionRevision_) {
+    if (sync_.mediaRevision() != lastMediaRevision_) {
+        lastMediaRevision_ = sync_.mediaRevision();
+        if (sync_.mediaVisible()) screen_ = Screen::MediaReceived;
+        else if (screen_ == Screen::MediaReceived) {
+            screen_ = Screen::Home;
+            draw();
+        }
+    }
+    if (sync_.interactionRevision() != lastInteractionRevision_ && screen_ != Screen::MediaReceived) {
         lastInteractionRevision_ = sync_.interactionRevision();
         screen_ = Screen::Interaction;
         draw();
@@ -223,7 +245,24 @@ void Ui::drawDevice() {
     } else if (pairingState == PairingState::Paired) {
         display_.text(20, 118, "Pareado", display_.statusColor(PresenceStatus::Available), background, 2);
     } else {
-        display_.button(20, 160, 200, 48, pairingState == PairingState::Preparing ? "Aguarde" : "Gerar codigo", display_.muted(theme), foreground);
+        display_.button(20, 108, 200, 40, pairingState == PairingState::Preparing ? "Aguarde" : "Gerar codigo", display_.muted(theme), foreground);
+    }
+    const bool pairingUsesLowerArea = pairingState != PairingState::Paired;
+    const int16_t sdTextY = pairingUsesLowerArea ? 174 : 146;
+    const int16_t sdButtonY = pairingUsesLowerArea ? kSdDiagnosticUnpairedY : kSdDiagnosticPairedY;
+    const uint16_t sdColor = sdCard_.state() == SdCardState::Ready ? display_.statusColor(PresenceStatus::Available) : display_.statusColor(PresenceStatus::Busy);
+    display_.text(20, sdTextY, sdLabel(sdCard_.state()), sdColor, background, 1);
+    if (sdCard_.state() == SdCardState::Ready) {
+        const uint32_t totalMb = static_cast<uint32_t>(sdCard_.totalBytes() / (1024ULL * 1024ULL));
+        const uint32_t usedMb = static_cast<uint32_t>(sdCard_.usedBytes() / (1024ULL * 1024ULL));
+        String capacity = String(usedMb) + " MB de " + String(totalMb) + " MB";
+        display_.text(20, sdTextY + 14, capacity.c_str(), foreground, background, 1);
+    } else {
+        display_.text(20, sdTextY + 14, sdCard_.detail().c_str(), foreground, background, 1);
+    }
+    display_.button(20, sdButtonY, 200, 40, "Testar cartao SD", display_.muted(theme), foreground);
+    if (pairingState == PairingState::Paired) {
+        display_.button(20, kMediaPreviewY, 200, 28, "Ver imagem", display_.muted(theme), foreground);
     }
     display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(theme), foreground);
 }
@@ -246,6 +285,18 @@ void Ui::drawInteraction() {
     }
     drawInteractionText(display_, interaction.content, foreground, background);
     display_.button(12, 258, 216, 48, "Voltar", display_.muted(theme), foreground);
+}
+
+void Ui::drawMediaTest() {
+    if (!media_.showTestImage()) {
+        const Theme theme = settings_.theme;
+        const uint16_t background = display_.background(theme);
+        const uint16_t foreground = display_.foreground(theme);
+        display_.clear(theme);
+        display_.text(18, 24, "Imagem", foreground, background, 3);
+        display_.text(18, 76, media_.detail().c_str(), display_.statusColor(PresenceStatus::Busy), background, 1);
+        display_.button(12, 258, 216, 48, "Voltar", display_.muted(theme), foreground);
+    }
 }
 
 void Ui::applyStatus(PresenceStatus status) {
@@ -317,6 +368,19 @@ void Ui::handle(const TouchEvent &event) {
         return;
     }
 
+    if (screen_ == Screen::MediaReceived) {
+        sync_.dismissMedia();
+        screen_ = Screen::Home;
+        draw();
+        return;
+    }
+
+    if (screen_ == Screen::MediaTest) {
+        screen_ = Screen::Device;
+        draw();
+        return;
+    }
+
     if (screen_ == Screen::Settings) {
         if (hit(event.x, event.y, 20, kThemeY, 200, kSettingsRowH)) {
             settings_.theme = settings_.theme == Theme::Dark ? Theme::Light : Theme::Dark;
@@ -339,7 +403,13 @@ void Ui::handle(const TouchEvent &event) {
         network_.startPortal();
         lastNetworkState_ = network_.state();
         draw();
-    } else if (screen_ == Screen::Device && hit(event.x, event.y, 20, 160, 200, 48)) {
+    } else if (screen_ == Screen::Device && pairing_.state() == PairingState::Paired && hit(event.x, event.y, 20, kMediaPreviewY, 200, 28)) {
+        screen_ = Screen::MediaTest;
+        draw();
+    } else if (screen_ == Screen::Device && hit(event.x, event.y, 20, pairing_.state() == PairingState::Paired ? kSdDiagnosticPairedY : kSdDiagnosticUnpairedY, 200, 40)) {
+        sdCard_.runDiagnostic();
+        draw();
+    } else if (screen_ == Screen::Device && pairing_.state() != PairingState::Paired && hit(event.x, event.y, 20, 108, 200, 40)) {
         pairing_.requestCode();
         lastPairingState_ = pairing_.state();
         draw();

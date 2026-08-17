@@ -38,7 +38,10 @@ String jsonString(const String &json, const char *key) {
     const int valueEnd = json.indexOf('"', valueStart);
     return valueEnd < 0 ? "" : json.substring(valueStart, valueEnd);
 }
+
 }
+
+const char *netinApiRootCertificate() { return kApiRootCertificate; }
 
 String PairingStore::loadCredential() const {
     Preferences prefs;

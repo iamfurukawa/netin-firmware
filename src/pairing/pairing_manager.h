@@ -7,6 +7,8 @@
 
 enum class PairingState : uint8_t { Unpaired, Preparing, CodeReady, Paired, Offline, Error };
 
+const char *netinApiRootCertificate();
+
 class PairingStore {
   public:
     String loadCredential() const;

@@ -83,6 +83,7 @@ void SyncManager::tick() {
     if (state_ == SyncState::Connected) {
         publishHeartbeat();
         publishNextPending();
+        processPendingMedia();
     }
 }
 
@@ -171,7 +172,67 @@ void SyncManager::handleCommand(const char *payload, size_t length) {
         settingsStore_.save(settings_);
     } else if (type == "social_event") {
         handleSocialEvent(body);
+    } else if (type == "media_event") {
+        handleMediaEvent(body);
     }
+}
+
+void SyncManager::handleMediaEvent(const String &body) {
+    const String eventId = jsonString(body, "eventId");
+    const String url = jsonString(body, "downloadUrl");
+    const String hash = jsonString(body, "sha256");
+    const String mimeType = jsonString(body, "kind");
+    const String sizeMarker = "\"size\":";
+    const int sizeStart = body.indexOf(sizeMarker);
+    if (eventId.isEmpty() || url.isEmpty() || hash.length() != 64 || sizeStart < 0 || (mimeType != "image/jpeg" && mimeType != "image/gif")) return;
+    const size_t size = static_cast<size_t>(body.substring(sizeStart + sizeMarker.length()).toInt());
+    const size_t maximumSize = mimeType == "image/gif" ? 2 * 1024 * 1024 : 150 * 1024;
+    if (!size || size > maximumSize) return;
+    if (eventId == lastCompletedMediaEventId_) return;
+    for (uint8_t index = 0; index < mediaQueueCount_; ++index) {
+        if (mediaQueue_[index].eventId == eventId) return;
+    }
+    if (mediaQueueCount_ >= kMediaQueueCapacity) {
+        publishMediaResult(eventId, false, "media_queue_full");
+        return;
+    }
+    PendingMedia &next = mediaQueue_[mediaQueueCount_++];
+    next.eventId = eventId;
+    next.url = url;
+    next.hash = hash;
+    next.mimeType = mimeType;
+    next.size = size;
+}
+
+void SyncManager::processPendingMedia() {
+    if (mediaVisible_ || mediaQueueCount_ == 0) return;
+    const PendingMedia current = mediaQueue_[0];
+    const bool downloaded = media_.downloadMedia(current.url, identity_.id, pairing_.credential(), current.hash, current.size);
+    const bool ok = downloaded && media_.showActiveMedia(current.mimeType);
+    publishMediaResult(current.eventId, ok, ok ? nullptr : "download_failed");
+    for (uint8_t index = 1; index < mediaQueueCount_; ++index) mediaQueue_[index - 1] = mediaQueue_[index];
+    --mediaQueueCount_;
+    if (ok) {
+        lastCompletedMediaEventId_ = current.eventId;
+        mediaVisible_ = true;
+        ++mediaRevision_;
+    }
+}
+
+void SyncManager::dismissMedia() {
+    if (!mediaVisible_) return;
+    mediaVisible_ = false;
+    media_.closeActiveMedia();
+    ++mediaRevision_;
+}
+
+void SyncManager::publishMediaResult(const String &eventId, bool success, const char *code) {
+    if (!client_) return;
+    const String topic = String("netin/v1/devices/") + identity_.id + "/events";
+    String payload = String("{\"protocolVersion\":1,\"type\":\"") + (success ? "media_ack" : "media_failed") + "\",\"eventId\":\"" + eventId + "\"";
+    if (!success) payload += String(",\"code\":\"") + (code ? code : "download_failed") + "\"";
+    payload += "}";
+    esp_mqtt_client_publish(client_, topic.c_str(), payload.c_str(), 0, 1, 0);
 }
 
 void SyncManager::handleSocialEvent(const String &body) {

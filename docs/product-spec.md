@@ -149,28 +149,28 @@ Para a primeira versão, o melhor recorte é **foto e GIF pequeno**. Vídeo deve
 ## Roadmap sugerido
 
 Detalhamento das entregas: [Fase 1](phase-1-spec.md), [Fase 2](phase-2-spec.md)
-e [Fase 4 — OTA](phase-4-spec.md).
+[Fase 3](phase-3-spec.md) e [Fase 4 — OTA](phase-4-spec.md).
 
 ### Fase 1 — fundação local
 
 - Tela estável, touch, LED e configurações de hardware.
 - Estados locais e alteração de status.
-- UI de favoritos simulada.
-- Persistência local de configurações e fila de eventos.
+- Persistência local de configurações.
 
 ### Fase 2 — conexão e identidade
 
 - Configuração de Wi‑Fi.
-- Registro do dispositivo e perfil.
+- Registro do dispositivo e perfil mínimo, sem avatar.
 - PWA de configuração, perfil e pareamento.
-- Backend com autenticação simples e MQTT sobre WebSocket para eventos.
-- Sincronização de status e entrega de mensagens curtas.
+- Backend com autenticação e MQTT sobre WebSocket para eventos de status.
+- Sincronização apenas do próprio status entre a placa e a PWA.
+- Não inclui amigos, contatos, convites, grupos, mensagens, reações ou broadcast.
 
 ### Fase 3 — social
 
-- Contatos, convites e grupos.
-- Reações, broadcast, histórico e cutucar com limites anti-spam.
-- Envio de foto/GIF pela PWA, processamento no backend e cache local.
+- Grupos com inscrição imediata, administração global e silenciamento geral.
+- Reações, mensagem curta e cutucada para grupo ou pessoa que compartilhe grupo.
+- Não inclui contatos, convites, histórico de interações nem limite de frequência para cutucadas.
 - Renovação deslizante de sessão: ao usar a PWA perto do vencimento, a API emite
   um novo cookie/sessão e revoga o anterior. Incluir limpeza periódica de sessões
   vencidas no PostgreSQL, limite de sessões ativas por conta e opção de encerrar
@@ -185,7 +185,7 @@ e [Fase 4 — OTA](phase-4-spec.md).
 
 ### Fase 5 — mídia
 
-- Foto sob demanda.
+- Foto e GIF enviados pela PWA, processamento no backend e cache local.
 - Experimentos de streaming em hardware adequado.
 
 ## Decisões pendentes após o início da Fase 2
