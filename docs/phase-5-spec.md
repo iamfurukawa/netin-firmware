@@ -27,12 +27,38 @@ enviar a mídia. O Netin destinatário:
 Falhas de rede, arquivo inválido ou SD card indisponível não apagam a mídia que
 já estava em cache e são reportadas ao backend.
 
+## Status da implementação — concluído
+
+A Fase 5 foi validada manualmente com a placa, o SD card, a PWA e o servidor
+em produção. Estão entregues:
+
+- envio de JPEG, PNG, WebP, GIF, MP4, MOV e WebM de até 10 MB;
+- busca e importação de GIFs pelo GIPHY;
+- gravação de vídeo curto sem áudio diretamente na PWA, com prévia espelhada
+  durante a captura, limite de oito segundos e prévia do resultado;
+- conversão no servidor de fotos para JPEG e de GIFs e vídeos para GIF
+  compatível com a placa (até 240 × 320, 12 fps, oito segundos e 128 cores);
+- armazenamento privado da variante processada, download HTTPS autenticado por
+  credencial do dispositivo e validação de tamanho e SHA-256;
+- escrita temporária no SD, promoção atômica do cache ativo e preservação da
+  mídia anterior em caso de falha;
+- exibição automática de JPEG e GIF, GIF lido progressivamente do SD e fila em
+  RAM de até três entregas enquanto uma mídia está visível;
+- `media_ack` após o arquivo estar íntegro e pronto para exibição, e
+  `media_failed` para falhas de download, SD ou fila cheia.
+
+O processamento ocorre de forma síncrona na requisição de upload na versão
+atual. Uma fila persistente de processamento e limpeza automática de arquivos
+expirados são melhorias operacionais posteriores, não requisitos de aceite da
+fase.
+
 ## Decisões da fase
 
 - O SD card é o armazenamento de cache de mídia. A flash interna permanece
   reservada para firmware, NVS e dados pequenos de configuração.
 - A mídia é exibida automaticamente ao ser recebida. Um toque fecha a
-  visualização e retorna ao painel.
+  visualização e retorna ao painel. Enquanto está aberta, até duas mídias
+  adicionais podem aguardar na fila RAM do dispositivo.
 - A PWA envia mídia tanto para um grupo quanto para uma pessoa em grupo em comum.
 - Fotos, GIFs e vídeo curto sem áudio são formatos de entrada aceitos. A placa
   recebe apenas JPEG ou GIF otimizado; ela nunca decodifica vídeo diretamente.
@@ -43,8 +69,9 @@ já estava em cache e são reportadas ao backend.
 
 ### Envio pela PWA
 
-- A tela de interações permite escolher `Foto`, `GIF` ou `Vídeo curto`, selecionar
-  um arquivo e definir o destino: grupo inscrito ou membro de um grupo em comum.
+- A tela de mídia permite escolher arquivo, buscar um GIF pelo GIPHY ou gravar
+  um vídeo curto pelo navegador e definir o destino: grupo inscrito ou membro
+  de um grupo em comum.
 - A PWA valida tipo e tamanho antes do upload e mostra progresso, processamento,
   sucesso ou erro.
 - Para destino de grupo, a regra de inscrição é a mesma de reações e mensagens.
@@ -65,15 +92,16 @@ já estava em cache e são reportadas ao backend.
 - GIFs são redimensionados para caber em `240 × 320`, com paleta limitada,
   duração limitada e taxa de quadros limitada. O backend pode convertê-los para
   um formato de animação próprio caso o decoder escolhido no firmware exija isso.
-- Vídeos curtos são processados de forma assíncrona com FFmpeg: o áudio é
+- Vídeos curtos são processados com FFmpeg durante o upload: o áudio é
   descartado, a duração é limitada, e o vídeo é convertido para o mesmo GIF
   otimizado aceito pela placa. MP4, MOV e WebM são formatos de entrada iniciais,
-  sujeitos à validação do conteúdo real do arquivo.
+  validados pelo decoder durante o processamento.
 - O arquivo processado fica em armazenamento privado. A URL de download não é
   pública e deve expirar ou exigir autorização de dispositivo.
-- O processamento é assíncrono: a API devolve aceitação do upload e só cria as
-  entregas quando a variante estiver pronta. Falha de processamento fica visível
-  à pessoa que enviou, sem criar entrega.
+- A API só cria entregas depois que a variante estiver pronta. Falha de
+  processamento fica visível à pessoa que enviou, sem criar entrega. Uma fila
+  assíncrona persistente poderá substituir esse processamento síncrono quando o
+  volume de uploads justificar a complexidade adicional.
 
 ### Entrega e cache no dispositivo
 
@@ -84,9 +112,10 @@ já estava em cache e são reportadas ao backend.
   arquivo temporário no SD card.
 - Antes de promover o arquivo para o cache ativo, valida tamanho e SHA-256. A
   promoção é atômica: o cache anterior permanece caso o download falhe.
-- O cache inicial contém uma mídia ativa por dispositivo. O arquivo anterior é
-  removido somente após a nova mídia ser validada; política de galeria ou cache
-  múltiplo fica fora desta fase.
+- O cache persistente contém uma mídia ativa, um arquivo temporário e um backup
+  transitório para a promoção atômica. O firmware também aceita até três
+  entregas pendentes na RAM enquanto uma mídia estiver visível; galeria e cache
+  histórico continuam fora desta fase.
 - Se o SD card não estiver montado, cheio ou apresentar erro de escrita, o
   firmware publica `media_failed` com código normalizado e não confirma a
   entrega.
@@ -122,7 +151,7 @@ teste com a placa, decoder e cartão reais:
 | GIF | até 8 segundos, 12 fps, 96 frames |
 | Vídeo original recebido pela API | 10 MB |
 | Vídeo | até 8 segundos, sem áudio; convertido para GIF processado |
-| Cache por dispositivo | uma mídia ativa + um temporário |
+| Cache por dispositivo | uma mídia ativa + temporário + backup transitório; até 3 entregas pendentes em RAM |
 | Prazo de entrega | 7 dias, seguindo a política de eventos sociais |
 
 O backend pode reduzir mais o arquivo para atender à largura de banda ou ao
@@ -198,21 +227,26 @@ O dispositivo responde por seu tópico de eventos com `media_ack` ou
 ## Implementação proposta
 
 1. Validar hardware: montar, listar, gravar e remover arquivo no SD card da
-   placa; definir pinos, driver e formato de sistema de arquivos.
+   placa; definir pinos, driver e formato de sistema de arquivos. **Concluído.**
 2. Escolher biblioteca de decode JPEG e GIF que opere por streaming a partir do
-   SD card e medir RAM, tempo por frame e estabilidade da tela.
+   SD card e medir RAM, tempo por frame e estabilidade da tela. **Concluído com
+   TJpg_Decoder e AnimatedGIF.**
 3. Criar armazenamento privado de objetos e pipeline de processamento no server
    (Sharp para imagem e FFmpeg para GIF e vídeo curto) compatível com a Raspberry.
+   **Concluído.**
 4. Criar migrações, upload autenticado, autorização de destino e API de estado
-   do processamento.
-5. Integrar tela PWA de upload, seleção de destino e acompanhamento do envio.
+   do processamento. **Concluído para o processamento síncrono atual.**
+5. Integrar tela PWA de upload, seleção de destino, GIPHY e gravação curta pela
+   câmera. **Concluído.**
 6. Criar contrato MQTT, entregas persistentes e endpoint de download autorizado.
+   **Concluído.**
 7. Implementar download temporário, SHA-256, cache atômico e tela de progresso no
-   firmware.
+   firmware. **Concluído.**
 8. Implementar visualização automática de JPEG e GIF, fila de mídia pendente e
-   tratamento de falhas.
+   tratamento de falhas. **Concluído.**
 9. Testar com rede lenta, Wi-Fi interrompido, cartão ausente/cheio, arquivo
-   corrompido, destino removido do grupo e dispositivo offline.
+   corrompido, destino removido do grupo e dispositivo offline. **Validado
+   manualmente; testes automatizados de resiliência ficam como melhoria futura.**
 
 ## Fora do escopo
 
