@@ -128,7 +128,7 @@ bool MediaManager::showGif(const char *path) {
     if (!SD.exists(path)) { detail_ = "Midia nao encontrada"; return false; }
     tft_.fillScreen(TFT_WHITE);
     activeRenderer_ = this;
-    gif_.begin(GIF_PALETTE_RGB565_LE);
+    gif_.begin(GIF_PALETTE_RGB565_BE);
     if (!gif_.open(path, gifOpen, gifClose, gifRead, gifSeek, gifDraw)) {
         activeRenderer_ = nullptr;
         detail_ = "Falha ao abrir GIF";
@@ -206,11 +206,24 @@ void MediaManager::gifDraw(GIFDRAW *draw) {
     const int16_t width = min<int16_t>(draw->iWidth, activeRenderer_->tft_.width() - startX);
     if (y < 0 || y >= activeRenderer_->tft_.height() || startX < 0 || startX >= activeRenderer_->tft_.width() || width <= 0) return;
     uint16_t pixels[240];
-    for (int16_t index = 0; index < width; ++index) {
-        const uint8_t colorIndex = draw->pPixels[index];
-        pixels[index] = draw->ucHasTransparency && colorIndex == draw->ucTransparent ? TFT_WHITE : static_cast<uint16_t>(~draw->pPalette[colorIndex]);
+    uint8_t *source = draw->pPixels;
+    bool hasTransparency = draw->ucHasTransparency;
+    if (draw->ucDisposalMethod == 2 && hasTransparency) {
+        for (int16_t index = 0; index < width; ++index) {
+            if (source[index] == draw->ucTransparent) source[index] = draw->ucBackground;
+        }
+        hasTransparency = false;
     }
-    activeRenderer_->tft_.pushImage(startX, y, width, 1, pixels);
+    int16_t index = 0;
+    while (index < width) {
+        while (hasTransparency && index < width && source[index] == draw->ucTransparent) ++index;
+        const int16_t runStart = index;
+        uint16_t count = 0;
+        while (index < width && (!hasTransparency || source[index] != draw->ucTransparent)) {
+            pixels[count++] = static_cast<uint16_t>(~draw->pPalette[source[index++]]);
+        }
+        if (count) activeRenderer_->tft_.pushImage(startX + runStart, y, count, 1, pixels);
+    }
 }
 
 void *MediaManager::gifOpen(const char *path, int32_t *size) {
