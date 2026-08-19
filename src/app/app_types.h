@@ -20,7 +20,6 @@ struct UserSettings {
     uint8_t schemaVersion = 1;
     PresenceStatus status = PresenceStatus::Available;
     Theme theme = Theme::Dark;
-    uint32_t statusChangeCount = 0;
 };
 
 constexpr uint8_t kSettingsSchemaVersion = 1;

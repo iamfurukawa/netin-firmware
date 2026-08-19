@@ -85,7 +85,6 @@ void NetinDisplay::reactionIcon(int16_t x, int16_t y, int16_t size, const char *
         tft_.fillRoundRect(x - size / 3, y - size / 3, size / 4, size * 2 / 3, size / 10, c);
         tft_.fillRoundRect(x + size / 12, y - size / 3, size / 4, size * 2 / 3, size / 10, c);
     } else {
-        // "Gostei" and unknown reactions use a clear, full-screen affirmative mark.
         tft_.fillRoundRect(x - size / 8, y - size / 2, size / 4, size * 3 / 4, size / 12, c);
         tft_.fillTriangle(x - size / 3, y - size / 8, x + size / 8, y - size / 8, x - size / 3, y + size / 3, c);
     }
@@ -118,7 +117,6 @@ void NetinDisplay::menuIcon(int16_t x, int16_t y, uint16_t color) {
 
 void NetinDisplay::settingsIcon(int16_t x, int16_t y, uint16_t color) {
     const uint16_t c = panelColor(color);
-    // Eight teeth, ring and central hole form a conventional gear silhouette.
     tft_.fillRect(x - 3, y - 22, 6, 8, c);
     tft_.fillRect(x - 3, y + 14, 6, 8, c);
     tft_.fillRect(x - 22, y - 3, 8, 6, c);

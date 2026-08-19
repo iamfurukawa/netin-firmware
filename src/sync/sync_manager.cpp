@@ -1,7 +1,6 @@
 #include "sync_manager.h"
 
 #include <cstring>
-#include <time.h>
 
 namespace {
 constexpr char kBrokerUri[] = "wss://netin-mqtt.13997906387.xyz/mqtt";
@@ -34,27 +33,6 @@ String jsonString(const String &json, const char *key) {
     return valueEnd < 0 ? "" : json.substring(valueStart, valueEnd);
 }
 
-String randomUuid() {
-    const uint32_t first = esp_random();
-    const uint16_t second = static_cast<uint16_t>(esp_random());
-    const uint16_t third = static_cast<uint16_t>((esp_random() & 0x0FFF) | 0x4000);
-    const uint16_t fourth = static_cast<uint16_t>((esp_random() & 0x3FFF) | 0x8000);
-    const uint32_t fifthA = esp_random();
-    const uint16_t fifthB = static_cast<uint16_t>(esp_random());
-    char value[37];
-    snprintf(value, sizeof(value), "%08lx-%04x-%04x-%04x-%08lx%04x", static_cast<unsigned long>(first), second, third, fourth, static_cast<unsigned long>(fifthA), fifthB);
-    return String(value);
-}
-
-String formatUtc(uint64_t epoch) {
-    time_t value = static_cast<time_t>(epoch);
-    tm timeInfo = {};
-    gmtime_r(&value, &timeInfo);
-    char timestamp[25];
-    strftime(timestamp, sizeof(timestamp), "%Y-%m-%dT%H:%M:%SZ", &timeInfo);
-    return String(timestamp);
-}
-
 String reactionLabel(const String &reaction) {
     if (reaction == "👍") return "Gostei";
     if (reaction == "❤️") return "Coracao";
@@ -82,7 +60,6 @@ void SyncManager::tick() {
     if (!client_) connect();
     if (state_ == SyncState::Connected) {
         publishHeartbeat();
-        publishNextPending();
         processPendingMedia();
     }
 }
@@ -92,7 +69,6 @@ void SyncManager::stop() {
     esp_mqtt_client_stop(client_);
     esp_mqtt_client_destroy(client_);
     client_ = nullptr;
-    started_ = false;
     if (state_ != SyncState::Revoked) state_ = SyncState::Offline;
 }
 
@@ -101,7 +77,6 @@ void SyncManager::connect() {
     if (mqttPassword_.isEmpty()) return;
     mqttUsername_ = String("device-") + identity_.id;
     commandTopic_ = String("netin/v1/devices/") + identity_.id + "/commands";
-    acknowledgementTopic_ = String("netin/v1/devices/") + identity_.id + "/ack";
 
     esp_mqtt_client_config_t config = {};
     config.uri = kBrokerUri;
@@ -118,7 +93,6 @@ void SyncManager::connect() {
     if (!client_) return;
     state_ = SyncState::Connecting;
     if (esp_mqtt_client_start(client_) != ESP_OK) stop();
-    else started_ = true;
 }
 
 esp_err_t SyncManager::mqttEvent(esp_mqtt_event_handle_t event) {
@@ -132,12 +106,10 @@ void SyncManager::handleEvent(esp_mqtt_event_handle_t event) {
             state_ = SyncState::Connected;
             lastHeartbeatAt_ = 0;
             esp_mqtt_client_subscribe(event->client, commandTopic_.c_str(), 1);
-            esp_mqtt_client_subscribe(event->client, acknowledgementTopic_.c_str(), 1);
             break;
         case MQTT_EVENT_DATA:
             if (event->total_data_len != event->data_len || event->data_len <= 0 || !event->topic) break;
             if (String(event->topic, event->topic_len) == commandTopic_) handleCommand(event->data, event->data_len);
-            else if (String(event->topic, event->topic_len) == acknowledgementTopic_) handleAcknowledgement(event->data, event->data_len);
             break;
         case MQTT_EVENT_ERROR:
             if (event->error_handle && event->error_handle->error_type == MQTT_ERROR_TYPE_CONNECTION_REFUSED &&
@@ -198,6 +170,8 @@ void SyncManager::handleMediaEvent(const String &body) {
     }
     PendingMedia &next = mediaQueue_[mediaQueueCount_++];
     next.eventId = eventId;
+    next.senderName = jsonString(body, "name").substring(0, 24);
+    if (next.senderName.isEmpty()) next.senderName = "Alguem";
     next.url = url;
     next.hash = hash;
     next.mimeType = mimeType;
@@ -208,7 +182,7 @@ void SyncManager::processPendingMedia() {
     if (mediaVisible_ || mediaQueueCount_ == 0) return;
     const PendingMedia current = mediaQueue_[0];
     const bool downloaded = media_.downloadMedia(current.url, identity_.id, pairing_.credential(), current.hash, current.size);
-    const bool ok = downloaded && media_.showActiveMedia(current.mimeType);
+    const bool ok = downloaded && media_.showActiveMedia(current.mimeType, current.senderName);
     publishMediaResult(current.eventId, ok, ok ? nullptr : "download_failed");
     for (uint8_t index = 1; index < mediaQueueCount_; ++index) mediaQueue_[index - 1] = mediaQueue_[index];
     --mediaQueueCount_;
@@ -253,49 +227,27 @@ void SyncManager::handleSocialEvent(const String &body) {
         else return;
         if (next.content.isEmpty()) return;
         if (!socialStore_.remember(eventId)) return;
-        interaction_ = next;
-        ++interactionRevision_;
+        if (interaction_.eventId.isEmpty()) {
+            interaction_ = next;
+            ++interactionRevision_;
+        } else if (interactionQueueCount_ < kInteractionQueueCapacity) {
+            interactionQueue_[interactionQueueCount_++] = next;
+        }
     }
     publishSocialAcknowledgement(eventId);
 }
 
-void SyncManager::dismissInteraction() {
-    interaction_ = SocialInteraction{};
-}
-
-bool SyncManager::enqueueStatus(PresenceStatus status) {
-    PendingStatusEvent event;
-    event.eventId = randomUuid();
-    event.status = status;
-    event.deviceVersion = store_.nextDeviceVersion();
-    event.createdAt = static_cast<uint64_t>(time(nullptr));
-    return store_.enqueue(event);
-}
-
-void SyncManager::publishNextPending() {
-    if (!client_) return;
-    if (lastPublishAt_ != 0 && millis() - lastPublishAt_ < 5000) return;
-    PendingStatusEvent event;
-    if (!store_.first(event)) return;
-    const String topic = String("netin/v1/devices/") + identity_.id + "/events";
-    const String payload = String("{\"protocolVersion\":1,\"eventId\":\"") + event.eventId +
-        "\",\"type\":\"status_changed\",\"status\":\"" + statusWireName(event.status) +
-        "\",\"createdAt\":\"" + formatUtc(event.createdAt) + "\",\"deviceVersion\":" + event.deviceVersion + "}";
-    if (esp_mqtt_client_publish(client_, topic.c_str(), payload.c_str(), 0, 1, 0) >= 0) {
-        inFlightEventId_ = event.eventId;
-        lastPublishAt_ = millis();
+bool SyncManager::dismissInteraction() {
+    if (interactionQueueCount_ == 0) {
+        interaction_ = SocialInteraction{};
+        ++interactionRevision_;
+        return false;
     }
-}
-
-void SyncManager::handleAcknowledgement(const char *payload, size_t length) {
-    const String body(payload, length);
-    if (jsonString(body, "type") != "status_ack") return;
-    const String eventId = jsonString(body, "eventId");
-    if (eventId.isEmpty() || eventId != inFlightEventId_) return;
-    if (store_.acknowledge(eventId)) {
-        inFlightEventId_ = "";
-        lastPublishAt_ = 0;
-    }
+    interaction_ = interactionQueue_[0];
+    for (uint8_t index = 1; index < interactionQueueCount_; ++index) interactionQueue_[index - 1] = interactionQueue_[index];
+    --interactionQueueCount_;
+    ++interactionRevision_;
+    return true;
 }
 
 void SyncManager::publishSocialAcknowledgement(const String &eventId) {

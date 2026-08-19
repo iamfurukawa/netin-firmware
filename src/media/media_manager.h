@@ -13,7 +13,7 @@ class MediaManager {
     bool prepareTestImage();
     bool showTestImage();
     bool showActiveImage();
-    bool showActiveMedia(const String &mimeType);
+    bool showActiveMedia(const String &mimeType, const String &senderName);
     void tick();
     void closeActiveMedia();
     bool downloadMedia(const String &url, const String &deviceId, const String &credential, const String &expectedSha256, size_t expectedSize);
@@ -29,6 +29,7 @@ class MediaManager {
     bool writeEmbeddedTestImage();
     bool showJpeg(const char *path);
     bool showGif(const char *path);
+    void drawSenderOverlay();
 
     static MediaManager *activeRenderer_;
     TFT_eSPI &tft_;
@@ -36,7 +37,9 @@ class MediaManager {
     AnimatedGIF gif_;
     File gifFile_;
     bool gifPlaying_ = false;
+    uint32_t gifNextFrameAt_ = 0;
     int16_t gifOffsetX_ = 0;
     int16_t gifOffsetY_ = 0;
+    String senderName_;
     String detail_ = "Imagem nao preparada";
 };

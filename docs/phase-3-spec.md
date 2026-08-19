@@ -41,7 +41,7 @@ pareados dessa pessoa.
 
 | Tipo | Destino | Criação | Conteúdo inicial |
 | --- | --- | --- | --- |
-| Reação | grupo inscrito | PWA | conjunto fixo de até 8 emojis/reações |
+| Reação | grupo inscrito | PWA | item do catálogo global de reações |
 | Mensagem curta | grupo inscrito | PWA | texto de 1 a 160 caracteres |
 | Cutucada | pessoa em grupo em comum ou grupo inscrito | PWA | evento sem texto, com alerta visual |
 
@@ -53,7 +53,7 @@ pareados dessa pessoa.
 - A entrega é ao menos uma vez via MQTT QoS 1; backend e firmware deduplicam por `eventId`.
 - “Entregue” significa que o dispositivo recebeu e confirmou o evento; confirmação de leitura fica fora desta fase.
 - Para cada destinatário, o backend entrega o evento a todos os seus dispositivos pareados e ativos. Dispositivos despareados nunca recebem eventos.
-- O backend pode limitar reação/mensagem por remetente e grupo para proteger o fan-out; os valores operacionais serão configuráveis, sem limitar o tamanho do grupo. Cutucadas não têm limite de frequência nesta fase.
+- O backend pode limitar reação/mensagem por remetente e grupo para proteger o fan-out; os valores operacionais serão configuráveis, sem limitar o tamanho do grupo. Cutucadas não têm limite de frequência nesta fase. O catálogo de reações inicialmente era fixo; sua administração pela PWA passa a pertencer à Fase 6.
 
 ### Cutucada
 

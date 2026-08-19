@@ -13,6 +13,7 @@ constexpr char kTestImagePath[] = "/netin-test.jpg";
 constexpr char kActiveMediaPath[] = "/media-atual";
 constexpr char kTemporaryImagePath[] = "/media-nova.part";
 constexpr char kBackupImagePath[] = "/media-anterior.bak";
+constexpr int16_t kSenderOverlayHeight = 22;
 constexpr size_t kTestImageSize = 2029;
 constexpr char kTestImageBase64[] = "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";
 
@@ -24,7 +25,7 @@ int base64Value(char value) {
     if (value == '/') return 63;
     return -1;
 }
-}  // namespace
+}
 
 MediaManager *MediaManager::activeRenderer_ = nullptr;
 
@@ -102,8 +103,9 @@ bool MediaManager::showTestImage() {
 
 bool MediaManager::showActiveImage() { return showJpeg(kActiveMediaPath); }
 
-bool MediaManager::showActiveMedia(const String &mimeType) {
+bool MediaManager::showActiveMedia(const String &mimeType, const String &senderName) {
     closeActiveMedia();
+    senderName_ = senderName.substring(0, 24);
     if (mimeType == "image/gif") return showGif(kActiveMediaPath);
     if (mimeType == "image/jpeg") return showJpeg(kActiveMediaPath);
     detail_ = "Midia nao suportada";
@@ -119,6 +121,7 @@ bool MediaManager::showJpeg(const char *path) {
     const JRESULT result = TJpgDec.drawSdJpg(0, 0, path);
     activeRenderer_ = nullptr;
     if (result != JDR_OK) { detail_ = "Falha ao abrir JPEG"; Serial.printf("Media: JPEG decoder failed (%d)\n", static_cast<int>(result)); return false; }
+    drawSenderOverlay();
     Serial.printf("Media: JPEG rendered %s\n", path);
     detail_ = "JPEG exibido";
     return true;
@@ -136,6 +139,8 @@ bool MediaManager::showGif(const char *path) {
     }
     gifOffsetX_ = max<int16_t>(0, (tft_.width() - gif_.getCanvasWidth()) / 2);
     gifOffsetY_ = max<int16_t>(0, (tft_.height() - gif_.getCanvasHeight()) / 2);
+    gifNextFrameAt_ = 0;
+    drawSenderOverlay();
     gifPlaying_ = true;
     detail_ = "GIF exibido";
     return true;
@@ -143,14 +148,33 @@ bool MediaManager::showGif(const char *path) {
 
 void MediaManager::tick() {
     if (!gifPlaying_) return;
-    if (!gif_.playFrame(true, nullptr)) gif_.reset();
+    if (gifNextFrameAt_ != 0 && static_cast<int32_t>(millis() - gifNextFrameAt_) < 0) return;
+    int delayMs = 0;
+    const int result = gif_.playFrame(false, &delayMs);
+    if (result < 0) {
+        gif_.reset();
+        gifNextFrameAt_ = millis() + 100;
+        return;
+    }
+    if (result == 0) gif_.reset();
+    gifNextFrameAt_ = millis() + constrain(delayMs, 20, 500);
 }
 
 void MediaManager::closeActiveMedia() {
-    if (!gifPlaying_) return;
-    gif_.close();
+    if (gifPlaying_) gif_.close();
     gifPlaying_ = false;
+    gifNextFrameAt_ = 0;
+    senderName_ = "";
     activeRenderer_ = nullptr;
+}
+
+void MediaManager::drawSenderOverlay() {
+    if (senderName_.isEmpty()) return;
+    tft_.fillRect(0, 0, 240, 22, TFT_WHITE);
+    tft_.setTextColor(TFT_BLACK, TFT_WHITE);
+    tft_.setTextSize(1);
+    tft_.setCursor(8, 7);
+    tft_.print("De " + senderName_);
 }
 
 bool MediaManager::downloadMedia(const String &url, const String &deviceId, const String &credential, const String &expectedSha256, size_t expectedSize) {
@@ -204,7 +228,7 @@ void MediaManager::gifDraw(GIFDRAW *draw) {
     const int16_t y = activeRenderer_->gifOffsetY_ + draw->iY + draw->y;
     const int16_t startX = activeRenderer_->gifOffsetX_ + draw->iX;
     const int16_t width = min<int16_t>(draw->iWidth, activeRenderer_->tft_.width() - startX);
-    if (y < 0 || y >= activeRenderer_->tft_.height() || startX < 0 || startX >= activeRenderer_->tft_.width() || width <= 0) return;
+    if (y < kSenderOverlayHeight || y >= activeRenderer_->tft_.height() || startX < 0 || startX >= activeRenderer_->tft_.width() || width <= 0) return;
     uint16_t pixels[240];
     uint8_t *source = draw->pPixels;
     bool hasTransparency = draw->ucHasTransparency;

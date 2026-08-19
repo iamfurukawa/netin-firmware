@@ -137,7 +137,12 @@ SETTINGS
 - Texto de contexto, status personalizado e expiração automática.
 - Tela de diagnóstico exposta ao usuário.
 
-## Pendências para encerrar a Fase 1
+## Status de encerramento — concluída
+
+A Fase 1 está concluída como fundação local do produto. As validações de tela,
+touch, persistência, tema e LED foram consideradas aceitas durante a evolução
+das fases posteriores. Os itens abaixo ficam como melhorias opcionais, não como
+condição para reabrir a fase.
 
 ### Implementação
 

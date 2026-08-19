@@ -5,41 +5,20 @@
 namespace {
 constexpr int16_t kScreenW = 240;
 constexpr int16_t kScreenH = 320;
-constexpr int16_t kMenuButtonX = 12;
-constexpr int16_t kMenuButtonY = 12;
-constexpr int16_t kMenuButtonSize = 48;
 constexpr int16_t kStatusCardX = 0;
-constexpr int16_t kStatusCardY = kMenuButtonY + kMenuButtonSize;
+constexpr int16_t kStatusCardY = 0;
 constexpr int16_t kStatusCardW = kScreenW;
-constexpr int16_t kStatusCardH = kScreenH - kStatusCardY;
-constexpr int16_t kPickerRowX = 12;
-constexpr int16_t kPickerRowY = 68;
-constexpr int16_t kPickerRowW = 164;
-constexpr int16_t kPickerRowH = 48;
-constexpr int16_t kPickerRowGap = 8;
-constexpr int16_t kPickerRowStep = kPickerRowH + kPickerRowGap;
-constexpr int16_t kPickerListBottom = 310;
-constexpr int16_t kPickerVisibleHeight = kPickerListBottom - kPickerRowY;
-constexpr int16_t kPickerContentHeight = kStatusCount * kPickerRowStep - kPickerRowGap;
-constexpr int16_t kPickerMaxScroll = kPickerContentHeight - kPickerVisibleHeight;
-constexpr int16_t kPickerBackX = 12;
-constexpr int16_t kPickerBackY = 12;
-constexpr int16_t kPickerBackSize = 48;
-constexpr int16_t kPickerScrollX = 184;
-constexpr int16_t kPickerScrollUpY = 68;
-constexpr int16_t kPickerScrollDownY = 236;
-constexpr int16_t kPickerScrollSize = 44;
+constexpr int16_t kStatusCardH = kScreenH;
 constexpr int16_t kBackX = 12;
 constexpr int16_t kBackY = 264;
 constexpr int16_t kBackW = 100;
 constexpr int16_t kBackH = 44;
-constexpr int16_t kThemeY = 72;
-constexpr int16_t kNetworkY = 128;
-constexpr int16_t kDeviceY = 184;
+constexpr int16_t kNetworkY = 72;
+constexpr int16_t kDeviceY = 136;
 constexpr int16_t kSettingsRowH = 48;
-constexpr int16_t kSdDiagnosticPairedY = 182;
-constexpr int16_t kSdDiagnosticUnpairedY = 206;
-constexpr int16_t kMediaPreviewY = 230;
+constexpr int16_t kSdDiagnosticPairedY = 190;
+constexpr int16_t kSdDiagnosticUnpairedY = 222;
+constexpr uint32_t kReceivedContentTimeoutMs = 3UL * 60UL * 1000UL;
 
 const char *networkLabel(NetworkState state) {
     switch (state) {
@@ -94,12 +73,10 @@ bool Ui::hit(uint16_t x, uint16_t y, int16_t rx, int16_t ry, int16_t rw, int16_t
 void Ui::draw() {
     switch (screen_) {
         case Screen::Home: drawHome(); break;
-        case Screen::StatusPicker: drawStatusPicker(); break;
         case Screen::Settings: drawSettings(); break;
         case Screen::Network: drawNetwork(); break;
         case Screen::Device: drawDevice(); break;
         case Screen::Interaction: drawInteraction(); break;
-        case Screen::MediaTest: drawMediaTest(); break;
         case Screen::MediaReceived: break;
     }
 }
@@ -109,14 +86,12 @@ void Ui::tick() {
         lastStatus_ = settings_.status;
         if (screen_ == Screen::Home) draw();
     }
-    const uint8_t pendingCount = sync_.pendingCount();
-    if (pendingCount != lastPendingCount_) {
-        lastPendingCount_ = pendingCount;
-        if (screen_ == Screen::Home) draw();
-    }
     if (sync_.mediaRevision() != lastMediaRevision_) {
         lastMediaRevision_ = sync_.mediaRevision();
-        if (sync_.mediaVisible()) screen_ = Screen::MediaReceived;
+        if (sync_.mediaVisible()) {
+            screen_ = Screen::MediaReceived;
+            mediaOpenedAt_ = millis();
+        }
         else if (screen_ == Screen::MediaReceived) {
             screen_ = Screen::Home;
             draw();
@@ -125,7 +100,24 @@ void Ui::tick() {
     if (sync_.interactionRevision() != lastInteractionRevision_ && screen_ != Screen::MediaReceived) {
         lastInteractionRevision_ = sync_.interactionRevision();
         screen_ = Screen::Interaction;
+        interactionOpenedAt_ = millis();
         draw();
+    }
+    if (screen_ == Screen::MediaReceived && millis() - mediaOpenedAt_ >= kReceivedContentTimeoutMs) {
+        sync_.dismissMedia();
+        screen_ = Screen::Home;
+        draw();
+    }
+    if (screen_ == Screen::Interaction && millis() - interactionOpenedAt_ >= kReceivedContentTimeoutMs) {
+        const bool hasNext = sync_.dismissInteraction();
+        lastInteractionRevision_ = sync_.interactionRevision();
+        if (hasNext) {
+            interactionOpenedAt_ = millis();
+            draw();
+        } else {
+            screen_ = Screen::Home;
+            draw();
+        }
     }
     const NetworkState current = network_.state();
     if (current != lastNetworkState_) {
@@ -145,49 +137,11 @@ void Ui::drawHome() {
     const uint16_t statusColor = display_.statusColor(settings_.status);
     display_.clear(theme);
 
-    // The status starts below the menu so the top-left control stays easy to hit.
     display_.button(kStatusCardX, kStatusCardY, kStatusCardW, kStatusCardH, "", statusColor, foreground);
-    display_.statusIcon(120, 158, settings_.status, foreground, statusColor);
+    display_.statusIcon(120, 128, settings_.status, foreground, statusColor);
     const char *label = statusLabel(settings_.status);
     const int16_t labelX = 120 - static_cast<int16_t>(strlen(label) * 18) / 2;
-    display_.text(labelX, 214, label, foreground, statusColor, 3);
-
-    if (statusQueueFull_) {
-        display_.text(58, 278, "Fila cheia: status local", foreground, statusColor, 1);
-    } else if (sync_.pendingCount() > 0) {
-        display_.text(76, 278, "Sincronizando...", foreground, statusColor, 1);
-    }
-
-    display_.button(kMenuButtonX, kMenuButtonY, kMenuButtonSize, kMenuButtonSize, "", display_.muted(theme), foreground);
-    display_.menuIcon(kMenuButtonX + kMenuButtonSize / 2, kMenuButtonY + kMenuButtonSize / 2, foreground);
-}
-
-void Ui::drawStatusPicker() {
-    const Theme theme = settings_.theme;
-    const uint16_t foreground = display_.foreground(theme);
-    display_.clear(theme);
-    display_.button(kPickerBackX, kPickerBackY, kPickerBackSize, kPickerBackSize, "", display_.muted(theme), foreground);
-    display_.backIcon(kPickerBackX + kPickerBackSize / 2, kPickerBackY + kPickerBackSize / 2, foreground);
-    const uint16_t upColor = pickerScroll_ > 0 ? display_.muted(theme) : display_.background(theme);
-    const uint16_t downColor = pickerScroll_ < kPickerMaxScroll ? display_.muted(theme) : display_.background(theme);
-    display_.button(kPickerScrollX, kPickerScrollUpY, kPickerScrollSize, kPickerScrollSize, "^", upColor, foreground);
-    display_.button(kPickerScrollX, kPickerScrollDownY, kPickerScrollSize, kPickerScrollSize, "v", downColor, foreground);
-
-    for (uint8_t index = 0; index < kStatusCount; ++index) {
-        const auto status = static_cast<PresenceStatus>(index);
-        const int16_t y = kPickerRowY + index * kPickerRowStep - pickerScroll_;
-        if (y < kPickerRowY || y + kPickerRowH > kPickerListBottom) continue;
-        const uint16_t color = display_.statusColor(status);
-        display_.button(kPickerRowX, y, kPickerRowW, kPickerRowH, "", color, foreground);
-        display_.statusIcon(38, y + 24, status, foreground, color);
-        const char *label = statusLabel(status);
-        const uint8_t textSize = strlen(label) > 10 ? 1 : 2;
-        const int16_t textY = textSize == 1 ? y + 20 : y + 15;
-        display_.text(68, textY, label, foreground, color, textSize);
-        if (status == settings_.status) {
-            display_.fillCircle(158, y + 27, 6, foreground);
-        }
-    }
+    display_.text(labelX, 188, label, foreground, statusColor, 3);
 }
 
 void Ui::drawSettings() {
@@ -196,7 +150,6 @@ void Ui::drawSettings() {
     const uint16_t foreground = display_.foreground(theme);
     display_.clear(theme);
     display_.text(22, 30, "Ajustes", foreground, background, 3);
-    display_.button(20, kThemeY, 200, kSettingsRowH, theme == Theme::Dark ? "Tema claro" : "Tema escuro", display_.muted(theme), foreground);
     display_.button(20, kNetworkY, 200, kSettingsRowH, "Rede", display_.muted(theme), foreground);
     display_.button(20, kDeviceY, 200, kSettingsRowH, "Dispositivo", display_.muted(theme), foreground);
     display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(theme), foreground);
@@ -234,22 +187,22 @@ void Ui::drawDevice() {
     display_.clear(theme);
     display_.text(20, 24, "Dispositivo", foreground, background, 3);
     display_.text(20, 64, "ID da placa", foreground, background, 1);
-    display_.text(20, 80, identity_.id.substring(0, 8).c_str(), foreground, background, 1);
+    display_.text(20, 82, identity_.id.substring(0, 8).c_str(), foreground, background, 2);
     const PairingState pairingState = pairing_.state();
     if (pairingState != PairingState::Paired) {
-        display_.text(20, 108, pairingLabel(pairingState), foreground, background, 1);
+        display_.text(20, 110, pairingLabel(pairingState), foreground, background, 2);
     }
     if (pairingState == PairingState::CodeReady) {
-        display_.text(20, 126, pairing_.code().c_str(), foreground, background, 2);
-        display_.text(20, 158, "Adicione o codigo na PWA", foreground, background, 1);
+        display_.text(20, 138, pairing_.code().c_str(), foreground, background, 2);
+        display_.text(20, 170, "Adicione o codigo na PWA", foreground, background, 1);
     } else if (pairingState == PairingState::Paired) {
         display_.text(20, 118, "Pareado", display_.statusColor(PresenceStatus::Available), background, 2);
     } else {
         display_.button(20, 108, 200, 40, pairingState == PairingState::Preparing ? "Aguarde" : "Gerar codigo", display_.muted(theme), foreground);
     }
     const bool pairingUsesLowerArea = pairingState != PairingState::Paired;
-    const int16_t sdTextY = pairingUsesLowerArea ? 174 : 146;
-    const int16_t sdButtonY = pairingUsesLowerArea ? kSdDiagnosticUnpairedY : kSdDiagnosticPairedY;
+    const int16_t sdTextY = pairingUsesLowerArea ? 194 : 154;
+    const int16_t sdButtonY = pairingUsesLowerArea ? 222 : 190;
     const uint16_t sdColor = sdCard_.state() == SdCardState::Ready ? display_.statusColor(PresenceStatus::Available) : display_.statusColor(PresenceStatus::Busy);
     display_.text(20, sdTextY, sdLabel(sdCard_.state()), sdColor, background, 1);
     if (sdCard_.state() == SdCardState::Ready) {
@@ -260,10 +213,7 @@ void Ui::drawDevice() {
     } else {
         display_.text(20, sdTextY + 14, sdCard_.detail().c_str(), foreground, background, 1);
     }
-    display_.button(20, sdButtonY, 200, 40, "Testar cartao SD", display_.muted(theme), foreground);
-    if (pairingState == PairingState::Paired) {
-        display_.button(20, kMediaPreviewY, 200, 28, "Ver imagem", display_.muted(theme), foreground);
-    }
+    display_.button(20, sdButtonY, 200, 40, "Verificar SD", display_.muted(theme), foreground);
     display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(theme), foreground);
 }
 
@@ -287,73 +237,13 @@ void Ui::drawInteraction() {
     display_.button(12, 258, 216, 48, "Voltar", display_.muted(theme), foreground);
 }
 
-void Ui::drawMediaTest() {
-    if (!media_.showTestImage()) {
-        const Theme theme = settings_.theme;
-        const uint16_t background = display_.background(theme);
-        const uint16_t foreground = display_.foreground(theme);
-        display_.clear(theme);
-        display_.text(18, 24, "Imagem", foreground, background, 3);
-        display_.text(18, 76, media_.detail().c_str(), display_.statusColor(PresenceStatus::Busy), background, 1);
-        display_.button(12, 258, 216, 48, "Voltar", display_.muted(theme), foreground);
-    }
-}
-
-void Ui::applyStatus(PresenceStatus status) {
-    const bool changed = status != settings_.status;
-    if (changed) ++settings_.statusChangeCount;
-    settings_.status = status;
-    store_.save(settings_);
-    lastStatus_ = status;
-    statusQueueFull_ = changed && !sync_.enqueueStatus(status);
-    lastPendingCount_ = sync_.pendingCount();
-    screen_ = Screen::Home;
-    draw();
-}
-
 void Ui::handle(const TouchEvent &event) {
     if (event.type == TouchEventType::None) return;
 
     if (screen_ == Screen::Home) {
         if (event.type != TouchEventType::Tap) return;
-        if (hit(event.x, event.y, kMenuButtonX, kMenuButtonY, kMenuButtonSize, kMenuButtonSize)) {
-            screen_ = Screen::Settings;
-            draw();
-        } else if (hit(event.x, event.y, kStatusCardX, kStatusCardY, kStatusCardW, kStatusCardH)) {
-            screen_ = Screen::StatusPicker;
-            pickerScroll_ = 0;
-            draw();
-        }
-        return;
-    }
-
-    if (screen_ == Screen::StatusPicker) {
-        if (event.type != TouchEventType::Tap) return;
-        if (hit(event.x, event.y, kPickerBackX, kPickerBackY, kPickerBackSize, kPickerBackSize)) {
-            screen_ = Screen::Home;
-            draw();
-            return;
-        }
-        if (hit(event.x, event.y, kPickerScrollX, kPickerScrollUpY, kPickerScrollSize, kPickerScrollSize) && pickerScroll_ > 0) {
-            pickerScroll_ -= kPickerRowStep;
-            if (pickerScroll_ < 0) pickerScroll_ = 0;
-            draw();
-            return;
-        }
-        if (hit(event.x, event.y, kPickerScrollX, kPickerScrollDownY, kPickerScrollSize, kPickerScrollSize) && pickerScroll_ < kPickerMaxScroll) {
-            pickerScroll_ += kPickerRowStep;
-            if (pickerScroll_ > kPickerMaxScroll) pickerScroll_ = kPickerMaxScroll;
-            draw();
-            return;
-        }
-        for (uint8_t index = 0; index < kStatusCount; ++index) {
-            const int16_t y = kPickerRowY + index * kPickerRowStep - pickerScroll_;
-            if (y < kPickerRowY || y + kPickerRowH > kPickerListBottom) continue;
-            if (hit(event.x, event.y, kPickerRowX, y, kPickerRowW, kPickerRowH)) {
-                applyStatus(static_cast<PresenceStatus>(index));
-                return;
-            }
-        }
+        screen_ = Screen::Settings;
+        draw();
         return;
     }
 
@@ -361,8 +251,11 @@ void Ui::handle(const TouchEvent &event) {
 
     if (screen_ == Screen::Interaction) {
         if (sync_.interaction().type == "reaction" || sync_.interaction().type == "poke" || hit(event.x, event.y, 12, 258, 216, 48)) {
-            sync_.dismissInteraction();
-            screen_ = Screen::Home;
+            const bool hasNext = sync_.dismissInteraction();
+            lastInteractionRevision_ = sync_.interactionRevision();
+            if (hasNext) {
+                interactionOpenedAt_ = millis();
+            } else screen_ = Screen::Home;
             draw();
         }
         return;
@@ -375,18 +268,8 @@ void Ui::handle(const TouchEvent &event) {
         return;
     }
 
-    if (screen_ == Screen::MediaTest) {
-        screen_ = Screen::Device;
-        draw();
-        return;
-    }
-
     if (screen_ == Screen::Settings) {
-        if (hit(event.x, event.y, 20, kThemeY, 200, kSettingsRowH)) {
-            settings_.theme = settings_.theme == Theme::Dark ? Theme::Light : Theme::Dark;
-            store_.save(settings_);
-            draw();
-        } else if (hit(event.x, event.y, 20, kNetworkY, 200, kSettingsRowH)) {
+        if (hit(event.x, event.y, 20, kNetworkY, 200, kSettingsRowH)) {
             screen_ = Screen::Network;
             lastNetworkState_ = network_.state();
             confirmForgetNetworks_ = false;
@@ -402,9 +285,6 @@ void Ui::handle(const TouchEvent &event) {
     } else if (screen_ == Screen::Network && hit(event.x, event.y, 20, 150, 200, 48)) {
         network_.startPortal();
         lastNetworkState_ = network_.state();
-        draw();
-    } else if (screen_ == Screen::Device && pairing_.state() == PairingState::Paired && hit(event.x, event.y, 20, kMediaPreviewY, 200, 28)) {
-        screen_ = Screen::MediaTest;
         draw();
     } else if (screen_ == Screen::Device && hit(event.x, event.y, 20, pairing_.state() == PairingState::Paired ? kSdDiagnosticPairedY : kSdDiagnosticUnpairedY, 200, 40)) {
         sdCard_.runDiagnostic();
@@ -430,9 +310,7 @@ void Ui::handle(const TouchEvent &event) {
         }
         if (screen_ == Screen::Network || screen_ == Screen::Device) {
             screen_ = Screen::Settings;
-        } else {
-            screen_ = Screen::StatusPicker;
-        }
+        } else screen_ = Screen::Home;
         draw();
     }
 }

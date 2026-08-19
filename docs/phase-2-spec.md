@@ -301,13 +301,13 @@ os testes de aceite finais.
 - [x] Implementar fila persistente, `eventId`, confirmação do backend e
   reconciliação de conflitos/offline.
 
-### Validação de encerramento
+### Validação de encerramento — concluída
 
-- [ ] Exercitar Wi-Fi inválido, redes salvas, reboot e retentativa.
-- [ ] Exercitar pareamento, revogação e remoção de dispositivo.
-- [ ] Confirmar status bidirecional entre PWA e placa conectada.
-- [ ] Exercitar API/broker indisponíveis, fila cheia, duplicatas e conflitos.
-- [ ] Medir flash/RAM com Wi-Fi, portal, TLS e MQTT.
+- [x] Exercitar Wi-Fi inválido, redes salvas, reboot e retentativa.
+- [x] Exercitar pareamento, revogação e remoção de dispositivo.
+- [x] Confirmar status bidirecional entre PWA e placa conectada.
+- [x] Exercitar API/broker indisponíveis, fila cheia, duplicatas e conflitos.
+- [x] Medir flash/RAM com Wi-Fi, portal, TLS e MQTT.
 
 ## Plano de implementação
 

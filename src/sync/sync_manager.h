@@ -9,7 +9,6 @@
 #include "pairing/pairing_manager.h"
 #include "storage/settings_store.h"
 #include "storage/social_store.h"
-#include "storage/sync_store.h"
 #include "media/media_manager.h"
 
 enum class SyncState : uint8_t { Offline, Connecting, Connected, Revoked };
@@ -29,12 +28,10 @@ class SyncManager {
     void begin();
     void tick();
     void stop();
-    bool enqueueStatus(PresenceStatus status);
     SyncState state() const { return state_; }
-    uint8_t pendingCount() const { return store_.count(); }
     const SocialInteraction &interaction() const { return interaction_; }
     uint32_t interactionRevision() const { return interactionRevision_; }
-    void dismissInteraction();
+    bool dismissInteraction();
     bool mediaVisible() const { return mediaVisible_; }
     uint32_t mediaRevision() const { return mediaRevision_; }
     void dismissMedia();
@@ -43,11 +40,9 @@ class SyncManager {
     static esp_err_t mqttEvent(esp_mqtt_event_handle_t event);
     void handleEvent(esp_mqtt_event_handle_t event);
     void handleCommand(const char *payload, size_t length);
-    void handleAcknowledgement(const char *payload, size_t length);
     void handleSocialEvent(const String &body);
     void handleMediaEvent(const String &body);
     void processPendingMedia();
-    void publishNextPending();
     void publishHeartbeat();
     void publishSocialAcknowledgement(const String &eventId);
     void publishMediaResult(const String &eventId, bool success, const char *code = nullptr);
@@ -55,6 +50,7 @@ class SyncManager {
 
     struct PendingMedia {
         String eventId;
+        String senderName;
         String url;
         String hash;
         String mimeType;
@@ -71,16 +67,14 @@ class SyncManager {
     String mqttUsername_;
     String mqttPassword_;
     String commandTopic_;
-    String acknowledgementTopic_;
-    String inFlightEventId_;
-    unsigned long lastPublishAt_ = 0;
     unsigned long lastHeartbeatAt_ = 0;
     SyncState state_ = SyncState::Offline;
-    bool started_ = false;
-    SyncStore store_;
     SocialStore socialStore_;
     SocialInteraction interaction_;
     uint32_t interactionRevision_ = 0;
+    static constexpr uint8_t kInteractionQueueCapacity = 3;
+    SocialInteraction interactionQueue_[kInteractionQueueCapacity];
+    uint8_t interactionQueueCount_ = 0;
     static constexpr uint8_t kMediaQueueCapacity = 3;
     PendingMedia mediaQueue_[kMediaQueueCapacity];
     uint8_t mediaQueueCount_ = 0;

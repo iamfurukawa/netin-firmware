@@ -19,8 +19,8 @@ Netin é um pequeno dispositivo social de mesa/bolso: mostra o estado atual de u
 Foco em informação passiva e ações curtas:
 
 - Ver status próprio, conectividade e últimas interações.
-- Mudar entre estados pré-definidos.
-- Responder com reação, ação rápida ou mensagem curta.
+- Exibir o estado atual configurado pela PWA.
+- Receber reações visuais, ações rápidas ou mensagens curtas.
 - Receber cutucadas, GIFs e alertas.
 - Escolher favoritos e usar ações simples de grupo.
 
@@ -148,16 +148,17 @@ Para a primeira versão, o melhor recorte é **foto e GIF pequeno**. Vídeo deve
 
 ## Roadmap sugerido
 
-Detalhamento das entregas: [Fase 1](phase-1-spec.md), [Fase 2](phase-2-spec.md)
-[Fase 3](phase-3-spec.md) e [Fase 4 — OTA](phase-4-spec.md).
+Detalhamento das entregas: [Fase 1](phase-1-spec.md), [Fase 2](phase-2-spec.md),
+[Fase 3](phase-3-spec.md), [Fase 4 — OTA](phase-4-spec.md),
+[Fase 5 — mídia](phase-5-spec.md) e [Fase 6 — melhorias](phase-6-spec.md).
 
-### Fase 1 — fundação local
+### Fase 1 — fundação local — concluída
 
 - Tela estável, touch, LED e configurações de hardware.
 - Estados locais e alteração de status.
 - Persistência local de configurações.
 
-### Fase 2 — conexão e identidade
+### Fase 2 — conexão e identidade — concluída
 
 - Configuração de Wi‑Fi.
 - Registro do dispositivo e perfil mínimo, sem avatar.
@@ -186,7 +187,15 @@ Detalhamento das entregas: [Fase 1](phase-1-spec.md), [Fase 2](phase-2-spec.md)
 ### Fase 5 — mídia
 
 - Foto e GIF enviados pela PWA, processamento no backend e cache local.
-- Experimentos de streaming em hardware adequado.
+- Vídeo curto sem áudio convertido para GIF, busca pelo GIPHY e gravação pela
+  câmera da PWA.
+
+### Fase 6 — melhorias e estabilização
+
+- Confiabilidade, desempenho, observabilidade e acabamento da experiência já
+  entregue, sem aumentar o escopo do firmware.
+- Limpeza de mídia expirada, progresso de upload, testes de resiliência e
+  diagnóstico operacional.
 
 ## Decisões pendentes após o início da Fase 2
 
