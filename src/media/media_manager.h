@@ -10,9 +10,6 @@
 class MediaManager {
   public:
     MediaManager(TFT_eSPI &tft, SdCardManager &sdCard) : tft_(tft), sdCard_(sdCard) {}
-    bool prepareTestImage();
-    bool showTestImage();
-    bool showActiveImage();
     bool showActiveMedia(const String &mimeType, const String &senderName);
     void tick();
     void closeActiveMedia();
@@ -26,7 +23,6 @@ class MediaManager {
     static void gifClose(void *handle);
     static int32_t gifRead(GIFFILE *file, uint8_t *buffer, int32_t length);
     static int32_t gifSeek(GIFFILE *file, int32_t position);
-    bool writeEmbeddedTestImage();
     bool showJpeg(const char *path);
     bool showGif(const char *path);
     void drawSenderOverlay();
