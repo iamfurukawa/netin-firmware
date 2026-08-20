@@ -11,6 +11,7 @@ class MediaManager {
   public:
     MediaManager(TFT_eSPI &tft, SdCardManager &sdCard) : tft_(tft), sdCard_(sdCard) {}
     bool showActiveMedia(const String &mimeType, const String &senderName);
+    bool showReactionMedia(const String &reactionId, const String &url, const String &deviceId, const String &credential, const String &mimeType, const String &expectedSha256, size_t expectedSize, const String &senderName);
     void tick();
     void closeActiveMedia();
     bool downloadMedia(const String &url, const String &deviceId, const String &credential, const String &expectedSha256, size_t expectedSize);
@@ -25,6 +26,10 @@ class MediaManager {
     static int32_t gifSeek(GIFFILE *file, int32_t position);
     bool showJpeg(const char *path);
     bool showGif(const char *path);
+    bool showMedia(const char *path, const String &mimeType, const String &senderName);
+    bool downloadToPath(const String &url, const String &deviceId, const String &credential, const String &expectedSha256, size_t expectedSize, const String &destination);
+    bool hasCachedReaction(const String &path, const String &expectedSha256);
+    bool saveReactionHash(const String &path, const String &expectedSha256);
     void drawSenderOverlay();
 
     static MediaManager *activeRenderer_;

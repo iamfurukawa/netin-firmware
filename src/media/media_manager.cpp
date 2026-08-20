@@ -10,20 +10,32 @@
 
 namespace {
 constexpr char kActiveMediaPath[] = "/media-atual";
-constexpr char kTemporaryImagePath[] = "/media-nova.part";
-constexpr char kBackupImagePath[] = "/media-anterior.bak";
 constexpr int16_t kSenderOverlayHeight = 22;
 }
 
 MediaManager *MediaManager::activeRenderer_ = nullptr;
 
 bool MediaManager::showActiveMedia(const String &mimeType, const String &senderName) {
+    return showMedia(kActiveMediaPath, mimeType, senderName);
+}
+
+bool MediaManager::showMedia(const char *path, const String &mimeType, const String &senderName) {
     closeActiveMedia();
     senderName_ = senderName.substring(0, 24);
-    if (mimeType == "image/gif") return showGif(kActiveMediaPath);
-    if (mimeType == "image/jpeg") return showJpeg(kActiveMediaPath);
+    if (mimeType == "image/gif") return showGif(path);
+    if (mimeType == "image/jpeg") return showJpeg(path);
     detail_ = "Midia nao suportada";
     return false;
+}
+
+bool MediaManager::showReactionMedia(const String &reactionId, const String &url, const String &deviceId, const String &credential, const String &mimeType, const String &expectedSha256, size_t expectedSize, const String &senderName) {
+    if (reactionId.length() != 36) {
+        detail_ = "Reacao invalida";
+        return false;
+    }
+    const String path = String("/reaction-") + reactionId;
+    if (!hasCachedReaction(path, expectedSha256) && (!downloadToPath(url, deviceId, credential, expectedSha256, expectedSize, path) || !saveReactionHash(path, expectedSha256))) return false;
+    return showMedia(path.c_str(), mimeType, senderName);
 }
 
 bool MediaManager::showJpeg(const char *path) {
@@ -102,6 +114,10 @@ void MediaManager::drawSenderOverlay() {
 }
 
 bool MediaManager::downloadMedia(const String &url, const String &deviceId, const String &credential, const String &expectedSha256, size_t expectedSize) {
+    return downloadToPath(url, deviceId, credential, expectedSha256, expectedSize, kActiveMediaPath);
+}
+
+bool MediaManager::downloadToPath(const String &url, const String &deviceId, const String &credential, const String &expectedSha256, size_t expectedSize, const String &destination) {
     if (sdCard_.state() != SdCardState::Ready) {
         detail_ = "SD indisponivel";
         return false;
@@ -129,8 +145,10 @@ bool MediaManager::downloadMedia(const String &url, const String &deviceId, cons
         detail_ = "Tamanho invalido";
         return false;
     }
-    if (SD.exists(kTemporaryImagePath)) SD.remove(kTemporaryImagePath);
-    File output = SD.open(kTemporaryImagePath, FILE_WRITE);
+    const String temporary = destination + ".part";
+    const String backup = destination + ".bak";
+    if (SD.exists(temporary)) SD.remove(temporary);
+    File output = SD.open(temporary, FILE_WRITE);
     if (!output) {
         http.end();
         detail_ = "Falha no SD";
@@ -162,19 +180,49 @@ bool MediaManager::downloadMedia(const String &url, const String &deviceId, cons
     for (uint8_t i = 0; i < 32; ++i) snprintf(actual + i * 2, 3, "%02x", digest[i]);
     if (written != expectedSize || expectedSha256 != actual) {
         Serial.printf("Media: integrity failed bytes=%u expected=%u hash=%s\n", static_cast<unsigned>(written), static_cast<unsigned>(expectedSize), actual);
-        SD.remove(kTemporaryImagePath);
+        SD.remove(temporary);
         detail_ = "Arquivo invalido";
         return false;
     }
-    if (SD.exists(kBackupImagePath)) SD.remove(kBackupImagePath);
-    if (SD.exists(kActiveMediaPath)) SD.rename(kActiveMediaPath, kBackupImagePath);
-    if (!SD.rename(kTemporaryImagePath, kActiveMediaPath)) {
-        if (SD.exists(kBackupImagePath)) SD.rename(kBackupImagePath, kActiveMediaPath);
+    if (SD.exists(backup)) SD.remove(backup);
+    if (SD.exists(destination)) SD.rename(destination, backup);
+    if (!SD.rename(temporary, destination)) {
+        if (SD.exists(backup)) SD.rename(backup, destination);
         detail_ = "Falha no cache";
         return false;
     }
-    SD.remove(kBackupImagePath);
+    SD.remove(backup);
     detail_ = "Midia pronta";
+    return true;
+}
+
+bool MediaManager::hasCachedReaction(const String &path, const String &expectedSha256) {
+    if (!SD.exists(path) || !SD.exists(path + ".sha")) return false;
+    File metadata = SD.open(path + ".sha", FILE_READ);
+    if (!metadata) return false;
+    const String storedHash = metadata.readString();
+    metadata.close();
+    return storedHash == expectedSha256;
+}
+
+bool MediaManager::saveReactionHash(const String &path, const String &expectedSha256) {
+    const String temporary = path + ".sha.part";
+    const String destination = path + ".sha";
+    if (SD.exists(temporary)) SD.remove(temporary);
+    File metadata = SD.open(temporary, FILE_WRITE);
+    if (!metadata || metadata.print(expectedSha256) != expectedSha256.length()) {
+        if (metadata) metadata.close();
+        SD.remove(temporary);
+        detail_ = "Falha no cache";
+        return false;
+    }
+    metadata.close();
+    if (SD.exists(destination)) SD.remove(destination);
+    if (!SD.rename(temporary, destination)) {
+        SD.remove(temporary);
+        detail_ = "Falha no cache";
+        return false;
+    }
     return true;
 }
 

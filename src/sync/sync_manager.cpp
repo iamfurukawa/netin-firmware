@@ -138,24 +138,24 @@ void SyncManager::handleCommand(const char *payload, size_t length) {
     }
 }
 
-void SyncManager::handleMediaEvent(const String &body) {
+bool SyncManager::handleMediaEvent(const String &body, const String &reactionId, bool socialDelivery) {
     const String eventId = jsonString(body, "eventId");
     const String url = jsonString(body, "downloadUrl");
     const String hash = jsonString(body, "sha256");
     const String mimeType = jsonString(body, "kind");
     const String sizeMarker = "\"size\":";
     const int sizeStart = body.indexOf(sizeMarker);
-    if (eventId.isEmpty() || url.isEmpty() || hash.length() != 64 || sizeStart < 0 || (mimeType != "image/jpeg" && mimeType != "image/gif")) return;
+    if (eventId.isEmpty() || url.isEmpty() || hash.length() != 64 || sizeStart < 0 || (mimeType != "image/jpeg" && mimeType != "image/gif")) return false;
     const size_t size = static_cast<size_t>(body.substring(sizeStart + sizeMarker.length()).toInt());
     const size_t maximumSize = mimeType == "image/gif" ? 2 * 1024 * 1024 : 150 * 1024;
-    if (!size || size > maximumSize) return;
-    if (eventId == lastCompletedMediaEventId_) return;
+    if (!size || size > maximumSize) return false;
+    if (eventId == lastCompletedMediaEventId_) return false;
     for (uint8_t index = 0; index < mediaQueueCount_; ++index) {
-        if (mediaQueue_[index].eventId == eventId) return;
+        if (mediaQueue_[index].eventId == eventId) return false;
     }
     if (mediaQueueCount_ >= kMediaQueueCapacity) {
-        publishMediaResult(eventId, false, "media_queue_full");
-        return;
+        if (!socialDelivery) publishMediaResult(eventId, false, "media_queue_full");
+        return false;
     }
     PendingMedia &next = mediaQueue_[mediaQueueCount_++];
     next.eventId = eventId;
@@ -165,14 +165,18 @@ void SyncManager::handleMediaEvent(const String &body) {
     next.hash = hash;
     next.mimeType = mimeType;
     next.size = size;
+    next.reactionId = reactionId;
+    next.socialDelivery = socialDelivery;
+    return true;
 }
 
 void SyncManager::processPendingMedia() {
     if (mediaVisible_ || mediaQueueCount_ == 0) return;
     const PendingMedia current = mediaQueue_[0];
-    const bool downloaded = media_.downloadMedia(current.url, identity_.id, pairing_.credential(), current.hash, current.size);
-    const bool ok = downloaded && media_.showActiveMedia(current.mimeType, current.senderName);
-    publishMediaResult(current.eventId, ok, ok ? nullptr : "download_failed");
+    const bool ok = current.reactionId.isEmpty()
+        ? media_.downloadMedia(current.url, identity_.id, pairing_.credential(), current.hash, current.size) && media_.showActiveMedia(current.mimeType, current.senderName)
+        : media_.showReactionMedia(current.reactionId, current.url, identity_.id, pairing_.credential(), current.mimeType, current.hash, current.size, current.senderName);
+    if (!current.socialDelivery) publishMediaResult(current.eventId, ok, ok ? nullptr : "download_failed");
     for (uint8_t index = 1; index < mediaQueueCount_; ++index) mediaQueue_[index - 1] = mediaQueue_[index];
     --mediaQueueCount_;
     if (ok) {
@@ -205,8 +209,7 @@ void SyncManager::handleSocialEvent(const String &body) {
 
     if (!socialStore_.contains(eventId)) {
         if (interactionType == "reaction" && !jsonString(body, "downloadUrl").isEmpty()) {
-            if (!socialStore_.remember(eventId)) return;
-            handleMediaEvent(body);
+            if (!handleMediaEvent(body, jsonString(body, "reactionId"), true) || !socialStore_.remember(eventId)) return;
             publishSocialAcknowledgement(eventId);
             return;
         }

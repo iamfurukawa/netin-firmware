@@ -41,7 +41,7 @@ class SyncManager {
     void handleEvent(esp_mqtt_event_handle_t event);
     void handleCommand(const char *payload, size_t length);
     void handleSocialEvent(const String &body);
-    void handleMediaEvent(const String &body);
+    bool handleMediaEvent(const String &body, const String &reactionId = "", bool socialDelivery = false);
     void processPendingMedia();
     void publishHeartbeat();
     void publishSocialAcknowledgement(const String &eventId);
@@ -54,7 +54,9 @@ class SyncManager {
         String url;
         String hash;
         String mimeType;
+        String reactionId;
         size_t size = 0;
+        bool socialDelivery = false;
     };
 
     const DeviceIdentity &identity_;
