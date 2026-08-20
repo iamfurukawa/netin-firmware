@@ -92,7 +92,7 @@ Cada alteração tem `eventId`, `deviceId`, `createdAt` e versão monotônica po
 A PWA é a superfície para configuração e gestão, não uma cópia completa da UI da placa.
 
 - Implementação: React, TypeScript e Vite, com layout mobile-first, manifest e service worker.
-- É hospedada como arquivos estáticos pelo proxy web da Raspberry em `https://netin.13997906387.xyz`; a API Fastify é servida separadamente em `https://netin-server.13997906387.xyz`.
+- É hospedada como arquivos estáticos pelo proxy web da Raspberry em `https://glados.13997906387.xyz`; a API Fastify é servida separadamente em `https://glados-server.13997906387.xyz`.
 - Chamadas à API usam CORS com credenciais somente entre esses dois subdomínios conhecidos.
 - A sessão de autenticação usa cookie `HttpOnly`, `Secure` e `SameSite`, em vez de token armazenado em `localStorage`.
 - Nesta fase, a sessão tem validade fixa de 30 dias. Ao expirar, a API responde
@@ -140,8 +140,8 @@ O backend é a fonte de verdade para conta, perfil, vínculo de dispositivos e s
 - O Fastify expõe a API HTTPS consumida pela PWA: autenticação por e-mail e senha, perfil, dispositivos e pareamento. Ele também executa o consumidor que aplica os eventos recebidos por MQTT.
 - PostgreSQL armazena contas, hashes de senha, dispositivos, vínculos, códigos de pareamento, estado atual e deduplicação de eventos. Mosquitto é responsável somente pelo transporte MQTT, não por regras de negócio.
 - API HTTPS para PWA e provisionamento/pareamento.
-- O dispositivo usa MQTT sobre WebSocket seguro: `wss://netin-mqtt.13997906387.xyz/mqtt`. Isso permite atravessar o Cloudflare Tunnel e o CGNAT pela porta HTTPS padrão, sem expor portas no roteador.
-- O Cloudflare Tunnel recebe o hostname curinga e o encaminha ao Nginx; o Nginx faz o upgrade WebSocket e encaminha somente `netin-mqtt.13997906387.xyz` ao listener WebSocket interno do Mosquitto. A PWA usa HTTPS para suas operações e não se conecta ao broker diretamente.
+- O dispositivo usa MQTT sobre WebSocket seguro: `wss://glados-mqtt.13997906387.xyz/mqtt`. Isso permite atravessar o Cloudflare Tunnel e o CGNAT pela porta HTTPS padrão, sem expor portas no roteador.
+- O Cloudflare Tunnel recebe o hostname curinga e o encaminha ao Nginx; o Nginx faz o upgrade WebSocket e encaminha somente `glados-mqtt.13997906387.xyz` ao listener WebSocket interno do Mosquitto. A PWA usa HTTPS para suas operações e não se conecta ao broker diretamente.
 - O serviço Node/Fastify conecta-se ao Mosquitto pela rede Docker interna.
 - Eventos, comandos e confirmações usam MQTT QoS 1. QoS 1 pode entregar duplicatas, portanto o backend confirma eventos de status de forma idempotente por `eventId`.
 - Enquanto estiver conectado, o firmware publica um heartbeat leve a cada 60
@@ -154,7 +154,7 @@ O backend é a fonte de verdade para conta, perfil, vínculo de dispositivos e s
 
 ### Regras mínimas de segurança
 
-- Toda comunicação fora da rede local usa TLS com validação de certificado. Para o dispositivo, o certificado público apresentado pelo Cloudflare para `netin-mqtt.13997906387.xyz` é validado contra a CA incluída no firmware.
+- Toda comunicação fora da rede local usa TLS com validação de certificado. Para o dispositivo, o certificado público apresentado pelo Cloudflare para `glados-mqtt.13997906387.xyz` é validado contra a CA incluída no firmware.
 - Senha Wi-Fi, tokens e segredos não aparecem em logs, tela, QR nem respostas da PWA.
 - A credencial do dispositivo é revogável e tem escopo apenas daquele dispositivo.
 - Códigos de pareamento são aleatórios, de uso único e expiram.
@@ -244,14 +244,14 @@ Os contratos HTTP e MQTT devem ser versionados e compartilhados entre os reposit
 
 - [x] Backend inicial: Node.js/TypeScript com Fastify, PostgreSQL e Mosquitto na Raspberry Pi.
 - [x] Portal Wi-Fi cativo com fallback em `192.168.4.1`; QR foi adiado.
-- [x] Endpoints públicos: `netin.13997906387.xyz` (PWA), `netin-server.13997906387.xyz` (API) e `netin-mqtt.13997906387.xyz` (MQTT/WSS). Cloudflare Tunnel termina TLS; o firmware valida a CA do certificado público.
+- [x] Endpoints públicos: `glados.13997906387.xyz` (PWA), `glados-server.13997906387.xyz` (API) e `glados-mqtt.13997906387.xyz` (MQTT/WSS). Cloudflare Tunnel termina TLS; o firmware valida a CA do certificado público.
 - [x] Fila persistente definida: até 20 eventos, FIFO, reenvio a cada 5 segundos e remoção apenas após `ack` idempotente do backend. Quando cheia, o status local continua utilizável e a tela informa o erro recuperável.
 - [x] Validado Wi-Fi, portal, NTP, HTTPS de pareamento, MQTT/WSS e TLS: firmware ocupa aproximadamente 82,3% da partição padrão de aplicação. OTA permanece fora desta entrega.
 
 ### Infraestrutura já validada
 
 - Raspberry Pi atrás de CGNAT com Cloudflare Tunnel apontando o curinga de domínio ao Nginx na rede Docker `nginxnet`.
-- Nginx roteia `netin-server.13997906387.xyz` para `netin-server:3000`, `netin.13997906387.xyz` para `netin-web:80` e `netin-mqtt.13997906387.xyz` para `mosquitto:9001` com upgrade WebSocket e HTTP/1.1. O nome Docker do container do broker é `netin-mosquitto`, mas o nome de serviço resolvido na rede é `mosquitto`.
+- Nginx roteia `glados-server.13997906387.xyz` para `netin-server:3000`, `glados.13997906387.xyz` para `netin-web:80` e `glados-mqtt.13997906387.xyz` para `mosquitto:9001` com upgrade WebSocket e HTTP/1.1. O nome Docker do container do broker é `netin-mosquitto`, mas o nome de serviço resolvido na rede é `mosquitto`.
 - API e PWA possuem runners GitHub Actions ARM64 próprios na Raspberry; somente pushes na `main` executam deploy. O upload físico do firmware permanece manual.
 - API e PWA publicadas com autenticação por e-mail/senha, sessão por cookie,
   edição de perfil, listagem/remoção de dispositivos, presença por heartbeat,

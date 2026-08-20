@@ -3,7 +3,7 @@
 #include <cstring>
 
 namespace {
-constexpr char kBrokerUri[] = "wss://netin-mqtt.13997906387.xyz/mqtt";
+constexpr char kBrokerUri[] = "wss://glados-mqtt.13997906387.xyz/mqtt";
 constexpr unsigned long kHeartbeatIntervalMs = 60000;
 
 // Google Trust Services GTS Root R4, used by the Cloudflare certificate chain.

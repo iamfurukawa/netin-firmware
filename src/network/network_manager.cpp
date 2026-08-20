@@ -174,7 +174,7 @@ void NetworkManager::configurePortalRoutes() {
         if (store_.willReplaceProfile(ssid) && server_.arg("replace") != "1") {
             const String page = "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
                 "<title>Confirmar rede</title><style>body{font:16px sans-serif;max-width:28rem;margin:2rem auto;padding:1rem}button{box-sizing:border-box;width:100%;padding:.8rem;margin:.6rem 0}</style>"
-                "<h1>Substituir rede salva?</h1><p>O Netin guarda ate 5 redes. Ao continuar, a rede usada ha mais tempo sera substituida.</p>"
+                "<h1>Substituir rede salva?</h1><p>O GLaDOS guarda ate 5 redes. Ao continuar, a rede usada ha mais tempo sera substituida.</p>"
                 "<form method=post action=/save><input type=hidden name=ssid value='" + htmlEscape(ssid) + "'><input type=hidden name=password value='" + htmlEscape(password) + "'><input type=hidden name=replace value=1><button>Substituir e conectar</button></form>"
                 "<a href='/'>Cancelar</a>";
             server_.send(200, "text/html; charset=utf-8", page);
@@ -186,7 +186,7 @@ void NetworkManager::configurePortalRoutes() {
         WiFi.begin(ssid.c_str(), password.c_str());
         connectStartedAt_ = millis();
         state_ = NetworkState::Connecting;
-        server_.send(200, "text/html; charset=utf-8", "<h1>Conectando...</h1><p>Volte para a tela do Netin.</p>");
+        server_.send(200, "text/html; charset=utf-8", "<h1>Conectando...</h1><p>Volte para a tela do GLaDOS.</p>");
     });
     server_.onNotFound([this] { server_.sendHeader("Location", "http://192.168.4.1/"); server_.send(302, "text/plain", ""); });
 }
@@ -198,8 +198,8 @@ String NetworkManager::portalPage() const {
         options += "<option value=\"" + WiFi.SSID(index) + "\">" + WiFi.SSID(index) + "</option>";
     }
     return "<!doctype html><meta name=viewport content='width=device-width,initial-scale=1'>"
-           "<title>Netin Wi-Fi</title><style>body{font:16px sans-serif;max-width:28rem;margin:2rem auto;padding:1rem}input,button{box-sizing:border-box;width:100%;padding:.8rem;margin:.4rem 0}</style>"
-           "<h1>Conectar Netin</h1><form method=post action=/save><label>Rede Wi-Fi</label><input name=ssid list=redes required><datalist id=redes>" + options +
+           "<title>GLaDOS Wi-Fi</title><style>body{font:16px sans-serif;max-width:28rem;margin:2rem auto;padding:1rem}input,button{box-sizing:border-box;width:100%;padding:.8rem;margin:.4rem 0}</style>"
+           "<h1>Conectar GLaDOS</h1><form method=post action=/save><label>Rede Wi-Fi</label><input name=ssid list=redes required><datalist id=redes>" + options +
            "</datalist><label>Senha</label><input name=password type=password><button>Conectar</button></form>";
 }
 
@@ -207,7 +207,7 @@ void NetworkManager::startPortal() {
     if (portalRunning_) stopPortal();
     WiFi.disconnect();
     WiFi.mode(WIFI_AP_STA);
-    portalSsid_ = "Netin-" + identity_.id.substring(0, 4);
+    portalSsid_ = "GLaDOS-" + identity_.id.substring(0, 4);
     portalPassword_ = ::portalPassword();
     portalConnectionFailed_ = false;
     WiFi.softAP(portalSsid_.c_str(), portalPassword_.c_str());

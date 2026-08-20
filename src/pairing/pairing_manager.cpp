@@ -6,7 +6,7 @@
 
 namespace {
 constexpr char kNamespace[] = "pairing";
-constexpr char kApiBaseUrl[] = "https://netin-server.13997906387.xyz";
+constexpr char kApiBaseUrl[] = "https://glados-server.13997906387.xyz";
 constexpr char kHardwareTarget[] = "esp32-2432s024";
 constexpr unsigned long kCodeLifetimeMs = 10UL * 60UL * 1000UL;
 constexpr unsigned long kPollIntervalMs = 4000;

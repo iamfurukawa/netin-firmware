@@ -1,10 +1,10 @@
-# Netin Firmware
+# GLaDOS Firmware
 
 Firmware inicial para a placa ESP32-2432S024, com display TFT 240×320 e touch resistivo.
 
 ## Estado atual
 
-- Tela Netin nativa com TFT_eSPI, em retrato.
+- Tela GLaDOS nativa com TFT_eSPI, em retrato.
 - Display estável com `ILI9341_2_DRIVER`.
 - Compensação de cor RGB565 para esta revisão do painel.
 - Touch calibrado e botão de atualização funcional.
