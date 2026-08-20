@@ -18,9 +18,7 @@ struct WifiProfile {
 class NetworkStore {
   public:
     static constexpr uint8_t kMaxProfiles = 5;
-    bool hasProfiles() const;
     uint8_t loadProfiles(WifiProfile profiles[], uint8_t capacity) const;
-    bool firstProfile(String &ssid, String &password) const;
     bool willReplaceProfile(const String &ssid) const;
     bool saveProfile(const String &ssid, const String &password) const;
     bool markSuccess(const String &ssid) const;

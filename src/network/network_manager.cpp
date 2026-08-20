@@ -37,12 +37,6 @@ String htmlEscape(const String &value) {
 }
 }
 
-bool NetworkStore::hasProfiles() const {
-    String ssid;
-    String password;
-    return firstProfile(ssid, password);
-}
-
 uint8_t NetworkStore::loadProfiles(WifiProfile profiles[], uint8_t capacity) const {
     if (capacity == 0) return 0;
     Preferences prefs;
@@ -67,21 +61,6 @@ uint8_t NetworkStore::loadProfiles(WifiProfile profiles[], uint8_t capacity) con
         }
     }
     return count;
-}
-
-bool NetworkStore::firstProfile(String &ssid, String &password) const {
-    Preferences prefs;
-    if (!prefs.begin(kNamespace, true)) return false;
-    for (uint8_t index = 0; index < kMaxProfiles; ++index) {
-        const String savedSsid = prefs.getString(keyFor("ssid", index).c_str(), "");
-        if (savedSsid.isEmpty()) continue;
-        ssid = savedSsid;
-        password = prefs.getString(keyFor("pass", index).c_str(), "");
-        prefs.end();
-        return true;
-    }
-    prefs.end();
-    return false;
 }
 
 bool NetworkStore::willReplaceProfile(const String &ssid) const {
