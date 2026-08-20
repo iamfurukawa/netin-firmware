@@ -39,7 +39,6 @@ class NetworkManager {
     const String &portalPassword() const { return portalPassword_; }
     bool portalConnectionFailed() const { return portalConnectionFailed_; }
     String connectedSsid() const;
-    String localIp() const;
     bool timeReady() const { return timeReady_; }
 
   private:

@@ -27,13 +27,11 @@ bool SdCardManager::begin() {
         detail_ = "Cartao nao encontrado";
         totalBytes_ = 0;
         usedBytes_ = 0;
-        Serial.println("SD: mount failed");
         return false;
     }
     state_ = SdCardState::Ready;
     detail_ = "Pronto";
     updateUsage();
-    Serial.printf("SD: ready, total=%llu used=%llu\n", totalBytes_, usedBytes_);
     return true;
 }
 
@@ -68,7 +66,6 @@ bool SdCardManager::runDiagnostic() {
     state_ = SdCardState::Ready;
     detail_ = "Leitura e escrita OK";
     updateUsage();
-    Serial.println("SD: diagnostic passed");
     return true;
 }
 

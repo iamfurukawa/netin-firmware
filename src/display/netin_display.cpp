@@ -8,9 +8,9 @@ void NetinDisplay::begin() {
     tft_.setTextWrap(false, false);
 }
 
-uint16_t NetinDisplay::background(Theme theme) const { return theme == Theme::Dark ? TFT_BLACK : TFT_WHITE; }
-uint16_t NetinDisplay::foreground(Theme theme) const { return theme == Theme::Dark ? TFT_WHITE : TFT_BLACK; }
-uint16_t NetinDisplay::muted(Theme theme) const { return theme == Theme::Dark ? TFT_DARKGREY : TFT_LIGHTGREY; }
+uint16_t NetinDisplay::background() const { return TFT_BLACK; }
+uint16_t NetinDisplay::foreground() const { return TFT_WHITE; }
+uint16_t NetinDisplay::muted() const { return TFT_DARKGREY; }
 
 uint16_t NetinDisplay::statusColor(PresenceStatus status) const {
     switch (status) {
@@ -27,7 +27,7 @@ uint16_t NetinDisplay::statusColor(PresenceStatus status) const {
     return TFT_GREEN;
 }
 
-void NetinDisplay::clear(Theme theme) { tft_.fillScreen(panelColor(background(theme))); }
+void NetinDisplay::clear() { tft_.fillScreen(panelColor(background())); }
 
 void NetinDisplay::text(int16_t x, int16_t y, const char *value, uint16_t fg, uint16_t bg, uint8_t size) {
     tft_.setTextColor(panelColor(fg), panelColor(bg));
@@ -41,10 +41,6 @@ void NetinDisplay::button(int16_t x, int16_t y, int16_t w, int16_t h, const char
     tft_.drawRoundRect(x, y, w, h, 10, panelColor(fg));
     const int16_t labelWidth = static_cast<int16_t>(strlen(label) * 12);
     text(x + (w - labelWidth) / 2, y + 17, label, fg, fill, 2);
-}
-
-void NetinDisplay::fillCircle(int16_t x, int16_t y, int16_t radius, uint16_t color) {
-    tft_.fillCircle(x, y, radius, panelColor(color));
 }
 
 void NetinDisplay::heart(int16_t x, int16_t y, int16_t size, uint16_t color) {
@@ -98,21 +94,6 @@ void NetinDisplay::pokeIcon(int16_t x, int16_t y, int16_t size, uint16_t color) 
     tft_.drawCircle(x, y, radius + 20, c);
     tft_.fillRoundRect(x - 7, y - radius / 2, 14, radius, 5, c);
     tft_.fillCircle(x, y + radius / 2 + 14, 8, c);
-}
-
-void NetinDisplay::backIcon(int16_t x, int16_t y, uint16_t color) {
-    const uint16_t c = panelColor(color);
-    tft_.drawLine(x + 8, y - 14, x - 6, y, c);
-    tft_.drawLine(x + 7, y - 14, x - 7, y, c);
-    tft_.drawLine(x - 6, y, x + 8, y + 14, c);
-    tft_.drawLine(x - 7, y, x + 7, y + 14, c);
-}
-
-void NetinDisplay::menuIcon(int16_t x, int16_t y, uint16_t color) {
-    const uint16_t c = panelColor(color);
-    tft_.fillRoundRect(x - 14, y - 10, 28, 4, 2, c);
-    tft_.fillRoundRect(x - 14, y - 2, 28, 4, 2, c);
-    tft_.fillRoundRect(x - 14, y + 6, 28, 4, 2, c);
 }
 
 void NetinDisplay::settingsIcon(int16_t x, int16_t y, uint16_t color) {

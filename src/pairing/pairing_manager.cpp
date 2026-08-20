@@ -98,7 +98,6 @@ bool PairingManager::post(const char *path, String &response, int &statusCode) {
     const String body = String("{\"deviceId\":\"") + identity_.id + "\",\"bootstrapSecret\":\"" + identity_.bootstrapSecret + "\"}";
     statusCode = http.POST(body);
     if (statusCode > 0) response = http.getString();
-    Serial.printf("Pairing POST %s: %d\n", path, statusCode);
     http.end();
     return statusCode > 0;
 }
@@ -114,7 +113,6 @@ bool PairingManager::registerDevice(bool &paired) {
     const int statusCode = http.POST(body);
     const String response = statusCode > 0 ? http.getString() : "";
     http.end();
-    Serial.printf("Pairing register: %d\n", statusCode);
     if (statusCode != 201) return false;
     paired = response.indexOf("\"paired\":true") >= 0;
     return true;

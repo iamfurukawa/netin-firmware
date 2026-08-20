@@ -4,10 +4,6 @@ bool isValidStatus(uint8_t value) {
     return value < kStatusCount;
 }
 
-bool isValidTheme(uint8_t value) {
-    return value <= static_cast<uint8_t>(Theme::Light);
-}
-
 const char *statusLabel(PresenceStatus status) {
     switch (status) {
         case PresenceStatus::Available: return "Disponivel";

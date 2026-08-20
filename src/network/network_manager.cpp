@@ -175,12 +175,10 @@ void NetworkManager::tryNextSavedNetwork() {
         retryAt_ = millis() + retryDelayMs_;
         retryDelayMs_ = min(retryDelayMs_ * 2, kMaxRetryDelayMs);
         state_ = NetworkState::Unconfigured;
-        Serial.println("Nenhuma rede salva conectou; aguardando nova tentativa");
         return;
     }
     const WifiProfile &profile = savedProfiles_[savedProfileIndex_++];
     WiFi.begin(profile.ssid.c_str(), profile.password.c_str());
-    Serial.printf("Conectando a rede salva %s\n", profile.ssid.c_str());
     connectStartedAt_ = millis();
     state_ = NetworkState::Connecting;
 }
@@ -207,7 +205,6 @@ void NetworkManager::configurePortalRoutes() {
         pendingPassword_ = password;
         portalConnectionFailed_ = false;
         WiFi.begin(ssid.c_str(), password.c_str());
-        Serial.printf("Testando rede do portal %s\n", ssid.c_str());
         connectStartedAt_ = millis();
         state_ = NetworkState::Connecting;
         server_.send(200, "text/html; charset=utf-8", "<h1>Conectando...</h1><p>Volte para a tela do Netin.</p>");
@@ -235,7 +232,6 @@ void NetworkManager::startPortal() {
     portalPassword_ = ::portalPassword();
     portalConnectionFailed_ = false;
     WiFi.softAP(portalSsid_.c_str(), portalPassword_.c_str());
-    Serial.printf("Portal WiFi: %s / %s\n", portalSsid_.c_str(), portalPassword_.c_str());
     dns_.start(53, "*", WiFi.softAPIP());
     configurePortalRoutes();
     server_.begin();
@@ -251,15 +247,11 @@ void NetworkManager::stopPortal() {
         server_.stop();
     }
 
-    // The portal must never remain available once the device is connected as
-    // a station.  Calling this even when the local flag is stale makes the
-    // transition robust after a reconnect or an interrupted portal request.
     WiFi.softAPdisconnect(true);
     delay(50);
     portalPassword_ = "";
     WiFi.mode(WIFI_STA);
     portalRunning_ = false;
-    Serial.println("Portal WiFi encerrado");
 }
 
 void NetworkManager::forgetNetworks() {
@@ -267,10 +259,6 @@ void NetworkManager::forgetNetworks() {
     WiFi.disconnect(true, true);
     store_.clearProfiles();
     state_ = NetworkState::Unconfigured;
-}
-
-String NetworkManager::localIp() const {
-    return state_ == NetworkState::Connected ? WiFi.localIP().toString() : "";
 }
 
 String NetworkManager::connectedSsid() const {
@@ -282,7 +270,6 @@ void NetworkManager::tick() {
         dns_.processNextRequest();
         server_.handleClient();
         if (millis() - portalStartedAt_ >= kPortalLifetimeMs) {
-            Serial.println("Portal WiFi expirou");
             stopPortal();
             startSavedNetwork();
             return;
@@ -291,11 +278,9 @@ void NetworkManager::tick() {
 
     if (state_ == NetworkState::Connected && timeSyncStarted_ && !timeReady_ && time(nullptr) > 1700000000) {
         timeReady_ = true;
-        Serial.println("Horario NTP sincronizado");
     }
 
     if (state_ == NetworkState::Connected && WiFi.status() != WL_CONNECTED) {
-        Serial.println("WiFi desconectado; retomando redes salvas");
         retryAt_ = millis();
         state_ = NetworkState::Unconfigured;
     }
@@ -321,11 +306,9 @@ void NetworkManager::tick() {
             configTime(0, 0, "time.cloudflare.com", "pool.ntp.org");
             timeSyncStarted_ = true;
         }
-        Serial.printf("WiFi conectado: %s\n", WiFi.localIP().toString().c_str());
         return;
     }
     if (millis() - connectStartedAt_ > kConnectTimeoutMs) {
-        Serial.println("Falha ou timeout ao conectar WiFi");
         portalConnectionFailed_ = portalRunning_;
         if (portalRunning_) {
             state_ = NetworkState::Portal;

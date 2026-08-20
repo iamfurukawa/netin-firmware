@@ -132,10 +132,9 @@ void Ui::tick() {
 }
 
 void Ui::drawHome() {
-    const Theme theme = settings_.theme;
-    const uint16_t foreground = display_.foreground(theme);
+    const uint16_t foreground = display_.foreground();
     const uint16_t statusColor = display_.statusColor(settings_.status);
-    display_.clear(theme);
+    display_.clear();
 
     display_.button(kStatusCardX, kStatusCardY, kStatusCardW, kStatusCardH, "", statusColor, foreground);
     display_.statusIcon(120, 128, settings_.status, foreground, statusColor);
@@ -145,21 +144,19 @@ void Ui::drawHome() {
 }
 
 void Ui::drawSettings() {
-    const Theme theme = settings_.theme;
-    const uint16_t background = display_.background(theme);
-    const uint16_t foreground = display_.foreground(theme);
-    display_.clear(theme);
+    const uint16_t background = display_.background();
+    const uint16_t foreground = display_.foreground();
+    display_.clear();
     display_.text(22, 30, "Ajustes", foreground, background, 3);
-    display_.button(20, kNetworkY, 200, kSettingsRowH, "Rede", display_.muted(theme), foreground);
-    display_.button(20, kDeviceY, 200, kSettingsRowH, "Dispositivo", display_.muted(theme), foreground);
-    display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(theme), foreground);
+    display_.button(20, kNetworkY, 200, kSettingsRowH, "Rede", display_.muted(), foreground);
+    display_.button(20, kDeviceY, 200, kSettingsRowH, "Dispositivo", display_.muted(), foreground);
+    display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(), foreground);
 }
 
 void Ui::drawNetwork() {
-    const Theme theme = settings_.theme;
-    const uint16_t background = display_.background(theme);
-    const uint16_t foreground = display_.foreground(theme);
-    display_.clear(theme);
+    const uint16_t background = display_.background();
+    const uint16_t foreground = display_.foreground();
+    display_.clear();
     display_.text(20, 24, "Rede", foreground, background, 3);
     if (network_.state() == NetworkState::Portal) {
         display_.text(20, 62, "Conecte em", foreground, background, 1);
@@ -175,16 +172,15 @@ void Ui::drawNetwork() {
     } else {
         display_.text(20, 66, networkLabel(network_.state()), foreground, background, 2);
     }
-    display_.button(20, 150, 200, 48, "Configurar WiFi", display_.muted(theme), foreground);
-    display_.button(20, 208, 200, 40, confirmForgetNetworks_ ? "Confirmar apagar" : "Esquecer redes", confirmForgetNetworks_ ? display_.statusColor(PresenceStatus::Busy) : display_.background(theme), foreground);
-    display_.button(kBackX, kBackY, kBackW, kBackH, confirmForgetNetworks_ ? "Cancelar" : "Voltar", display_.muted(theme), foreground);
+    display_.button(20, 150, 200, 48, "Configurar WiFi", display_.muted(), foreground);
+    display_.button(20, 208, 200, 40, confirmForgetNetworks_ ? "Confirmar apagar" : "Esquecer redes", confirmForgetNetworks_ ? display_.statusColor(PresenceStatus::Busy) : display_.background(), foreground);
+    display_.button(kBackX, kBackY, kBackW, kBackH, confirmForgetNetworks_ ? "Cancelar" : "Voltar", display_.muted(), foreground);
 }
 
 void Ui::drawDevice() {
-    const Theme theme = settings_.theme;
-    const uint16_t background = display_.background(theme);
-    const uint16_t foreground = display_.foreground(theme);
-    display_.clear(theme);
+    const uint16_t background = display_.background();
+    const uint16_t foreground = display_.foreground();
+    display_.clear();
     display_.text(20, 24, "Dispositivo", foreground, background, 3);
     display_.text(20, 64, "ID da placa", foreground, background, 1);
     display_.text(20, 82, identity_.id.substring(0, 8).c_str(), foreground, background, 2);
@@ -198,7 +194,7 @@ void Ui::drawDevice() {
     } else if (pairingState == PairingState::Paired) {
         display_.text(20, 118, "Pareado", display_.statusColor(PresenceStatus::Available), background, 2);
     } else {
-        display_.button(20, 108, 200, 40, pairingState == PairingState::Preparing ? "Aguarde" : "Gerar codigo", display_.muted(theme), foreground);
+        display_.button(20, 108, 200, 40, pairingState == PairingState::Preparing ? "Aguarde" : "Gerar codigo", display_.muted(), foreground);
     }
     const bool pairingUsesLowerArea = pairingState != PairingState::Paired;
     const int16_t sdTextY = pairingUsesLowerArea ? 194 : 154;
@@ -213,16 +209,15 @@ void Ui::drawDevice() {
     } else {
         display_.text(20, sdTextY + 14, sdCard_.detail().c_str(), foreground, background, 1);
     }
-    display_.button(20, sdButtonY, 200, 40, "Verificar SD", display_.muted(theme), foreground);
-    display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(theme), foreground);
+    display_.button(20, sdButtonY, 200, 40, "Verificar SD", display_.muted(), foreground);
+    display_.button(kBackX, kBackY, kBackW, kBackH, "Voltar", display_.muted(), foreground);
 }
 
 void Ui::drawInteraction() {
-    const Theme theme = settings_.theme;
-    const uint16_t background = display_.background(theme);
-    const uint16_t foreground = display_.foreground(theme);
+    const uint16_t background = display_.background();
+    const uint16_t foreground = display_.foreground();
     const SocialInteraction &interaction = sync_.interaction();
-    display_.clear(theme);
+    display_.clear();
     display_.text(18, 18, interaction.senderName.c_str(), display_.statusColor(PresenceStatus::Focused), background, 2);
     if (interaction.type == "reaction") {
         display_.reactionIcon(120, 160, 140, interaction.content.c_str(), interaction.content == "Coracao" ? TFT_RED : display_.statusColor(PresenceStatus::Focused));
@@ -234,7 +229,7 @@ void Ui::drawInteraction() {
         return;
     }
     drawInteractionText(display_, interaction.content, foreground, background);
-    display_.button(12, 258, 216, 48, "Voltar", display_.muted(theme), foreground);
+    display_.button(12, 258, 216, 48, "Voltar", display_.muted(), foreground);
 }
 
 void Ui::handle(const TouchEvent &event) {

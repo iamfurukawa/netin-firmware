@@ -44,10 +44,6 @@ void setup() {
     display.begin();
     tft.setTouch(kTouchCalibration);
     settings = settingsStore.load();
-    if (settings.theme != Theme::Dark) {
-        settings.theme = Theme::Dark;
-        settingsStore.save(settings);
-    }
     identity = identityStore.loadOrCreate();
     network.begin();
     pairing.begin();
