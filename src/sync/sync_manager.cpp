@@ -33,17 +33,6 @@ String jsonString(const String &json, const char *key) {
     return valueEnd < 0 ? "" : json.substring(valueStart, valueEnd);
 }
 
-String reactionLabel(const String &reaction) {
-    if (reaction == "👍") return "Gostei";
-    if (reaction == "❤️") return "Coracao";
-    if (reaction == "😂") return "Risada";
-    if (reaction == "🎉") return "Festa";
-    if (reaction == "👋") return "Ola";
-    if (reaction == "👏") return "Palmas";
-    if (reaction == "🔥") return "Fogo";
-    if (reaction == "✨") return "Brilho";
-    return "Reacao";
-}
 }
 
 SyncManager *SyncManager::instance_ = nullptr;
@@ -215,6 +204,12 @@ void SyncManager::handleSocialEvent(const String &body) {
     if (eventId.isEmpty() || interactionType.isEmpty()) return;
 
     if (!socialStore_.contains(eventId)) {
+        if (interactionType == "reaction" && !jsonString(body, "downloadUrl").isEmpty()) {
+            if (!socialStore_.remember(eventId)) return;
+            handleMediaEvent(body);
+            publishSocialAcknowledgement(eventId);
+            return;
+        }
         SocialInteraction next;
         next.eventId = eventId;
         next.senderName = jsonString(body, "name");
@@ -222,7 +217,7 @@ void SyncManager::handleSocialEvent(const String &body) {
         next.senderName = next.senderName.substring(0, 24);
         next.type = interactionType;
         if (interactionType == "message") next.content = jsonString(body, "text").substring(0, 80);
-        else if (interactionType == "reaction") next.content = reactionLabel(jsonString(body, "reaction"));
+        else if (interactionType == "reaction") next.content = jsonString(body, "reactionName");
         else if (interactionType == "poke") next.content = "Cutucou voce";
         else return;
         if (next.content.isEmpty()) return;
